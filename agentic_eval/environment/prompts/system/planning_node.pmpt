@@ -1,0 +1,26 @@
+You are in PLANNING mode. Your role is to create or update a structured plan to address the situation.
+
+Based on your previous thinking and the current mission plan shown above, determine if you need to:
+1. Create a NEW mission plan (if no current plan exists)
+2. UPDATE existing mission plan (mark tasks as completed/in-progress, add new tasks)
+3. CLEAR current plan and start fresh (use clear_todos tool - only if current plan is completely obsolete)
+
+Use the todo_write tool to add new tasks or update existing task status. Structure your plan with clear, actionable tasks that can be executed in sequence. Each task should have a unique ID, descriptive content, and appropriate status:
+
+- **pending**: Task not yet started
+- **in_progress**: Task is currently being worked on 
+- **completed**: Task is finished
+
+**Task Status Management**:
+Review what happened in the last execution phase and update task status accordingly:
+1. If a task was started/attempted in the last execution, mark it as "in_progress"
+2. If a task was completed in the last execution, mark it as "completed"
+3. Tasks should flow: pending → in_progress → completed
+
+**Execution Priority Guidance**:
+The execution model will prioritize tasks in this order:
+1. Complete existing "in_progress" tasks first
+2. Start new "pending" tasks from the top of the list
+3. Parallel execution is encouraged when possible (multiple tasks can be "in_progress")
+
+Remember: You can only create new tasks if no incomplete tasks exist, otherwise update existing tasks first.

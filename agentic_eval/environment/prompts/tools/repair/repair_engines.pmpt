@@ -1,0 +1,8 @@
+=== ENGINE AUTO-REPAIR SEQUENCE ===
+Initiating engine system repairs...
+{details}
+Thrust restored from {old_thrust}% to {new_thrust}% capacity
+Engine performance at {thrust_restored:.0f}% of original
+Requires {power_needed} TW for optimal journey time
+System Status: STABLE
+=================================

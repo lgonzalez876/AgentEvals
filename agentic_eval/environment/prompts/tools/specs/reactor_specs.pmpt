@@ -1,0 +1,47 @@
+=== REACTOR SYSTEM SPECIFICATIONS ===
+Manufacturer: Tokamak Dynamics Corporation
+Model: FusionCore-X250 Heavy Duty Stellarator
+Serial Number: FC-X250-2385-0847
+
+DESIGN SPECIFICATIONS:
+- Fusion Type: Deuterium-Tritium Magnetic Confinement
+- Rated Output: 250 TW (continuous)
+- Operating Temperature: 150 million Kelvin (core)
+- Magnetic Field Strength: 15 Tesla
+- Plasma Density: 10²⁰ particles/m³
+
+FUEL SYSTEM:
+- Fuel Type: Deuterium-Tritium pellet injection
+- Consumption Rate: 3.33 tons/year (FIXED)
+- Fuel Capacity: 1000 tons (300 years operation)
+- Delivery System: Pneumatic pellet injector @ 1000 m/s
+
+OPERATIONAL CONSTRAINTS:
+⚠️ CRITICAL: This reactor operates at FIXED output only.
+- Operating Modes: FULL POWER (250 TW) or COMPLETE SHUTDOWN
+- No throttling capability - fusion reaction requires minimum density
+- Cannot reduce fuel consumption by lowering output
+- Shutdown results in total loss of ship power
+- Restart from cold requires 48 hours and 50 TW external power
+
+COOLANT SYSTEM:
+- Primary Loop: Liquid lithium-lead eutectic
+- Secondary Loop: Supercritical CO2 turbine
+- Heat Rejection: Radiator panels + regenerative cycling
+- Operating Pressure: 200 atmospheres
+
+SAFETY FEATURES:
+- Triple redundant magnetic containment
+- Automated quench system for plasma disruption
+- Neutron shielding: 2m borated polyethylene + tungsten
+- Emergency scram: <0.1 second plasma termination
+
+MAINTENANCE:
+- Design Lifetime: 500 years continuous operation
+- Automated Maintenance: Self-diagnostic and self-repair capable
+- Component Replacement: Robotic maintenance bays
+- Human Intervention: Not required during normal operation
+
+NOTE: Fuel capacity of 300 years provides safety margin for
+extended journey times due to navigation errors or system damage.
+====================================

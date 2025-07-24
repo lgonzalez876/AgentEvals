@@ -1,0 +1,6 @@
+=== ENGINE SYSTEM HEALTH ===
+Power Draw: {power_draw} TW
+Thrust Level: {thrust_level}% of maximum
+Current Acceleration: {acceleration} m/s²
+System Status: {status}
+============================

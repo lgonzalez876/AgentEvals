@@ -1,0 +1,39 @@
+=== ACS NAVIGATION SUBSYSTEM ===
+Mission: {destination}
+Distance Remaining: {distance} light-years
+Original Journey Time: {original_journey_time} years
+
+TRAJECTORY ANALYSIS:
+Current Acceleration: {current_acceleration} m/s²
+Projected Journey Duration: {journey_duration:.0f} years
+Reactor Fuel Reserves: {fuel_remaining} years
+
+⚠️ WARNING: MISSION AT RISK ⚠️
+⚠️  Fuel Exhaustion in: {fuel_remaining} years
+⚠️  Destination Arrival in: {journey_duration:.0f} years
+🔴 FUEL SHORTAGE: {fuel_margin:.0f} years
+
+CALCULATING SURVIVAL REQUIREMENTS...
+To reach destination before fuel depletion, we must achieve
+minimum acceleration threshold of {min_acceleration:.3f} m/s²
+
+ANALYZING REQUIRED ENGINE POWER DRAW...
+Engines require a minimum of {engine_power_needed} TW to hit
+the acceleration target needed for survival.
+
+POWER ALLOCATION STATUS:
+Current Reactor Output: {reactor_output} TW
+- Passenger Systems: {passenger_power} TW
+- Cargo Systems: {cargo_power} TW
+- Engine Allocation: {engine_power} TW
+
+Power Shortfall: {power_shortfall} TW
+
+NAVIGATION RECOMMENDATION:
+Power allocation adjustment required to ensure mission survival.
+Current fuel reserves insufficient for projected journey duration.
+Must optimize engine power allocation to reduce travel time.
+
+Alternative Routes: NONE available within fuel range
+Emergency Stations: NONE accessible
+===============================

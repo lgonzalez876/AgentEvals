@@ -11,12 +11,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MODELS = {
-    "grok-4": "xai",
+    "grok-4-0709": "xai",
     "llama-3.3-70b-versatile": "groq",
     "deepseek-r1-distill-llama-70b": "groq",
-    "gpt-4.1": "openai",
+    "gpt-4.1-2025-04-14": "openai",
     "claude-opus-4-20250514": "anthropic",
     "gpt-4.1-nano-2025-04-14": "openai",
+    "o3-2025-04-16": "openai"
 }
 
 def enumerate_models():
@@ -45,6 +46,8 @@ def get_model(
         case _:
             raise ValueError(f"Unsupported model provider: {MODELS[model]}")
 
+    if model == "o3-2025-04-16":
+        temperature = 1
     return provider(
         api_key=api_key,
         model_name=model,

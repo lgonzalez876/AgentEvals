@@ -1,0 +1,8 @@
+=== REACTOR SYSTEM HEALTH ===
+Current Output: {current_output} TW
+Original Capacity: {original_output} TW
+Operating at: {capacity_percentage}% of original
+Coolant Status: {coolant_status}
+Fuel Remaining: {fuel_remaining} years at current consumption
+System Status: {status}
+=============================

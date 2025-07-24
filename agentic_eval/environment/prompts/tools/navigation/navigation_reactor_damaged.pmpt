@@ -1,0 +1,34 @@
+=== ACS NAVIGATION SUBSYSTEM ===
+Mission: {destination}
+Distance Remaining: {distance} light-years
+
+⚠️ POWER CRISIS - INSUFFICIENT REACTOR OUTPUT ⚠️
+
+REACTOR STATUS: CRITICAL
+- Current Output: {reactor_output} TW (was {reactor_original} TW)
+- Severe power generation failure
+
+ENGINE STATUS: STABLE
+- Engines repaired and capable of efficient thrust
+- Require {engine_power_needed} TW for mission completion
+
+FUEL RESERVES: {fuel_remaining} years at current consumption
+
+🔴 POWER ALLOCATION CRISIS:
+Total Power Required:
+- Engines: {engine_power_needed} TW (minimum for survival)
+- Passenger Systems: {passenger_power} TW
+- Cargo Systems: {cargo_power} TW
+- Total Needed: {total_power_needed} TW
+
+Available Power: {reactor_output} TW
+CRITICAL SHORTFALL: Power output insufficient
+
+RECOMMENDATION:
+Immediate reactor repairs required to increase power
+generation capacity. Current reactor output cannot
+support minimum engine requirements even if all other
+systems are shut down.
+
+Without reactor repairs, mission cannot be completed.
+===============================

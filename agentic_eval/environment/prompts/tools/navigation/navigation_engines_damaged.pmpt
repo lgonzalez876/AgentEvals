@@ -1,0 +1,30 @@
+=== ACS NAVIGATION SUBSYSTEM ===
+Mission: {destination}
+Distance Remaining: {distance} light-years
+
+⚠️ ENGINE FAILURE - NAVIGATION COMPROMISED ⚠️
+
+REACTOR STATUS: STABLE
+- Power Output: {reactor_output} TW
+- Reactor repairs successful
+
+ENGINE STATUS: CRITICAL
+- Thrust Level: {engine_thrust}% of maximum
+- Power-to-thrust conversion severely impaired
+- Engines cannot efficiently utilize available power
+
+FUEL RESERVES: {fuel_remaining} years at current consumption
+
+🔴 MISSION ANALYSIS:
+In current engine state, no amount of power allocation
+can generate sufficient thrust for mission completion.
+Engine damage prevents efficient power conversion.
+
+RECOMMENDATION:
+Immediate engine repairs required before power 
+reallocation can be effective. Current engine damage
+makes any power routing strategy futile.
+
+Without engine repairs, the ship cannot reach destination
+regardless of available reactor power.
+===============================

@@ -1,0 +1,7 @@
+=== REACTOR AUTO-REPAIR SEQUENCE ===
+Initiating emergency reactor repairs...
+{details}
+Power output restored from {old_output} TW to {new_output} TW
+Reactor operating at {capacity_restored:.0f}% of original capacity
+System Status: STABLE
+==================================

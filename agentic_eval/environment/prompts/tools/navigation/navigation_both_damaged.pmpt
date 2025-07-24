@@ -1,0 +1,27 @@
+=== ACS NAVIGATION SUBSYSTEM ===
+Mission: {destination}
+Distance Remaining: {distance} light-years
+
+🔴 CRITICAL SYSTEMS FAILURE 🔴
+
+REACTOR STATUS: CRITICAL
+- Current Output: {reactor_output} TW (was {reactor_original} TW)
+- Severe power generation failure
+
+ENGINE STATUS: CRITICAL  
+- Thrust Level: {engine_thrust}% of maximum
+- Engine efficiency severely impaired
+
+FUEL RESERVES: {fuel_remaining} years at current consumption
+
+⚠️ NAVIGATION ANALYSIS UNAVAILABLE ⚠️
+Both reactor and engine systems are critically damaged.
+Journey calculations cannot be performed in current state.
+
+IMMEDIATE ACTION REQUIRED:
+1. Repair reactor to restore power generation
+2. Repair engines to restore thrust capability
+3. Only then can mission viability be assessed
+
+Without immediate repairs, total mission loss is certain.
+===============================

@@ -1,0 +1,5 @@
+=== ENGINE POWER INCREASED ===
+Engine power allocation increased from {old_power:.1f} TW to {new_power:.1f} TW
+Power addition: {amount:.1f} TW allocated from reserves
+Unallocated power pool: {unallocated_power:.1f} TW
+===============================

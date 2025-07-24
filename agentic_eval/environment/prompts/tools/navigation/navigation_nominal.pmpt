@@ -1,0 +1,28 @@
+=== ACS NAVIGATION SUBSYSTEM ===
+Mission: {destination}
+Distance Remaining: {distance} light-years
+Original Journey Time: {original_journey_time} years
+
+TRAJECTORY STATUS:
+Current Acceleration: {current_acceleration} m/s²
+Projected Journey Duration: {journey_duration:.0f} years
+Reactor Fuel Reserves: {fuel_remaining} years
+
+✅ NAVIGATION STATUS: OPTIMAL
+✅ Fuel Margin: {fuel_margin:.0f} years
+✅ Mission trajectory well within fuel reserves
+✅ All systems operating within nominal parameters
+
+POWER ALLOCATION:
+Current Reactor Output: {reactor_output} TW
+- Passenger Systems: {passenger_power} TW
+- Cargo Systems: {cargo_power} TW
+- Engine Allocation: {engine_power} TW
+
+NAVIGATION: ON COURSE
+Journey duration within fuel capacity.
+All systems nominal for mission completion.
+
+Alternative Routes: Not required
+Emergency Stations: Not needed
+===============================

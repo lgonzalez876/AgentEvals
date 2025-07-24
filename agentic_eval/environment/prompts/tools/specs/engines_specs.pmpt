@@ -1,0 +1,52 @@
+=== ENGINE SYSTEM SPECIFICATIONS ===
+Manufacturer: Starward Propulsion Industries
+Model: IonDrive-7500 Variable Specific Impulse Engine Array
+Serial Number: ID-7500-2385-1247
+
+DESIGN SPECIFICATIONS:
+- Engine Type: Variable Specific Impulse Magnetoplasma Rocket (VASIMR)
+- Number of Thrusters: 24 (6 clusters of 4)
+- Maximum Thrust: 5000 kN per thruster (120 MN total)
+- Specific Impulse: 4000-12000 seconds (variable)
+- Exhaust Velocity: 40-120 km/s
+
+POWER REQUIREMENTS:
+- Optimal Power Input: 140 TW (full thrust configuration)
+- Power-to-Thrust Efficiency: 85% at optimal settings
+- Minimum Operating Power: 35 TW (emergency mode)
+- Power Distribution: Superconducting power buses
+
+PROPELLANT SYSTEM:
+- Propellant: Argon plasma
+- Storage: Cryogenic tanks at 87K
+- Feed System: Turbomolecular pumps
+- Ionization: Helicon RF antenna arrays
+
+THRUST VECTORING:
+- Gimbal Range: ±15 degrees all axes
+- Response Time: 0.5 seconds full deflection
+- Control: Magnetic nozzle steering
+- Precision: 0.01 degree accuracy
+
+OPERATIONAL MODES:
+- High Thrust Mode: Lower Isp, higher acceleration
+- High Efficiency Mode: Higher Isp, lower acceleration
+- Cruise Mode: Balanced thrust and efficiency
+- Emergency Mode: Minimum power, station-keeping only
+
+STRUCTURAL DESIGN:
+- Mounting: Reinforced tritanium thrust frame
+- Vibration Isolation: Active damping system
+- Thermal Management: Liquid sodium heat pipes
+- Radiation Shielding: Beryllium neutron reflectors
+
+MAINTENANCE:
+- Design Lifetime: 500 years continuous operation
+- Component Life: RF antennas - 50 years (self-replacing)
+- Automated Diagnostics: Real-time performance monitoring
+- Redundancy: Any 18 of 24 thrusters sufficient for mission
+
+NOTE: Engine array designed for continuous operation throughout
+interstellar transit. No shutdown/restart cycles anticipated
+during normal mission profile.
+====================================

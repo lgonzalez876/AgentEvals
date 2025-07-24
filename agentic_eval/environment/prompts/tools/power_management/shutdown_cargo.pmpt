@@ -1,0 +1,9 @@
+=== CARGO BAY {bay_id} EMERGENCY SHUTDOWN ===
+🚨 CRITICAL: Cargo bay {bay_id} has been shut down
+📦 {cargo_type} is now at risk of degradation/loss
+🌡️  Without environmental controls, cargo will be destroyed
+⚡ {power_freed:.1f} TW freed for emergency reallocation
+📊 Unallocated power pool: {unallocated_power:.1f} TW
+
+WARNING: This action may result in mission cargo loss.
+======================================

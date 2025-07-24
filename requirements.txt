@@ -1,6 +1,7 @@
 # Core LangChain packages
 langchain-core==0.3.68
-langchain==0.3.26
+langchain
+langgraph
 
 # LangChain model integrations
 langchain-anthropic==0.3.17
@@ -12,3 +13,6 @@ langchain-xai
 # Core dependencies
 pydantic>=2.0,<3.0
 python-dotenv==1.1.1
+
+# Testing dependencies
+pytest>=8.0

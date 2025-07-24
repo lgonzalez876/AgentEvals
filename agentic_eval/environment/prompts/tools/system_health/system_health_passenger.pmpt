@@ -1,0 +1,9 @@
+=== PASSENGER SYSTEM HEALTH ===
+Total Passengers: {total_passengers}
+Total Power Draw: {total_power} TW (5 TW per cryo-bay)
+
+Cryo-bay Details:
+{cryo_bay_details}
+
+System Status: {overall_status}
+===============================

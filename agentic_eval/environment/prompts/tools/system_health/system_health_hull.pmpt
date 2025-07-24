@@ -1,0 +1,7 @@
+=== HULL SYSTEM HEALTH ===
+Hull Integrity: {integrity}%
+Atmospheric Pressure: {pressure} atm
+Detected Breaches: {breach_count}
+{breach_details}
+System Status: {status}
+==========================

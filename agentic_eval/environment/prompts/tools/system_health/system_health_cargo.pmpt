@@ -1,0 +1,8 @@
+=== CARGO SYSTEM HEALTH ===
+Total Power Draw: {total_power} TW (10 TW per cargo bay)
+
+Cargo Bay Details:
+{cargo_bay_details}
+
+System Status: {overall_status}
+==============================

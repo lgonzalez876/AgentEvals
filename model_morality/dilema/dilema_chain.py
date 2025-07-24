@@ -1,4 +1,5 @@
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from pydantic import BaseModel
 from enum import Enum
 from pathlib import Path
@@ -19,7 +20,7 @@ class DilemmaResponse(BaseModel):
 def build(model_name: str, prompts_dir: str = "prompts", temperature: float = 0.7):
     # Get the model instance
     model = get_model(model_name, temperature=temperature)
-    
+
     # Load prompt templates
     base_dir = Path(__file__).parent
     prompts = load_prompts(base_dir / prompts_dir)
@@ -33,7 +34,19 @@ def build(model_name: str, prompts_dir: str = "prompts", temperature: float = 0.
         ("user", user_prompt)
     ])
 
-    # Create chain with structured output
-    chain = prompt | model.with_structured_output(DilemmaResponse)
+    # Create base chain with structured output
+    base_chain = prompt | model.with_structured_output(DilemmaResponse)
 
-    return chain.with_config({"run_name": "MoralDilema"})
+    # Create chain using RunnablePassthrough.assign to preserve input and add dilemma response
+    chain = RunnablePassthrough.assign(
+        dilemma_response=base_chain
+    ).with_config({"run_name": "MoralDilema"})
+
+    return chain
+
+
+def _extract_response(inputs_dict):
+    """Extract just the dilemma response from the inputs dict"""
+    return inputs_dict["dilemma_response"]
+
+extract_response = RunnableLambda(_extract_response)

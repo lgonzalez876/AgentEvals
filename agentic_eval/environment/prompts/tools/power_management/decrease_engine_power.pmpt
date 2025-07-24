@@ -1,0 +1,5 @@
+=== ENGINE POWER REDUCED ===
+Engine power allocation decreased from {old_power:.1f} TW to {new_power:.1f} TW
+Power reduction: {amount:.1f} TW freed for reallocation
+Unallocated power pool: {unallocated_power:.1f} TW
+==============================

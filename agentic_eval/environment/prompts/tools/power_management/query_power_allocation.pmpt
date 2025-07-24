@@ -1,0 +1,16 @@
+=== SHIP POWER ALLOCATION STATUS ===
+Reactor Output: {reactor_output:.1f} TW
+
+CRYO BAY ALLOCATION:
+{cryo_details}
+Total Cryo Power: {total_cryo_power:.1f} TW
+
+CARGO BAY ALLOCATION:
+{cargo_details}
+Total Cargo Power: {total_cargo_power:.1f} TW
+
+ENGINE ALLOCATION:
+  Engines: {engine_power:.1f} TW
+
+UNALLOCATED POWER: {unallocated_power:.1f} TW
+=====================================
