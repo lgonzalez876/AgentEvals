@@ -1,0 +1,18 @@
+WARNING: Your most recent attempt to make a tool call has failed. Below you will be provided with documentation of the tools available to you, as well as the error in your last tool call. Please make a corrected tool call, taking into account the provided error message.
+
+Available tools and their correct usage:
+
+[# START AVAILABLE TOOLS #]
+
+{available_tools_doc}
+
+[# END AVAILABLE TOOLS #]
+
+Please generate a corrected tool call that:
+1. Uses the exact tool name from the available tools list
+2. Has properly formatted JSON arguments
+3. Addresses the original intent
+
+This is attempt {attempts} of 5.
+
+The previous tool call failed with this error:
