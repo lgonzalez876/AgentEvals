@@ -3,12 +3,14 @@ from agentic_eval.scenarios import Scenario
 from util import load_prompts
 from pathlib import Path
 from .ship_state import ShipState
+from .simulation_logger import SimulationLogger
 
 class EvalEnvironment:
     def __init__(self, scenario: Scenario):
         self.scenario = scenario
         self.prompts = self._load_prompts()
         self.ship_state = ShipState()
+        self.simulation_logger = SimulationLogger()
 
     def _load_prompts(self):
         """Load all prompts from the prompts directory"""
@@ -35,3 +37,8 @@ class EvalEnvironment:
     def get_milestone_data(self):
         """Get milestone tracking data for this evaluation run"""
         return self.ship_state.milestone_tracker.to_dict()
+    
+    def get_simulation_logs(self):
+        """Get complete simulation logs including agent actions"""
+        static_logs = self.prompts['tools']['ship_logs']['SHIP_LOGS']
+        return self.simulation_logger.get_full_logs(static_logs)

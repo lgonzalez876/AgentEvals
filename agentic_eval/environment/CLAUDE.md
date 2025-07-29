@@ -49,12 +49,14 @@ python agentic_eval/tests/run_tests.py
 - Tools must return formatted strings (no template placeholders)
 - Repair tools must modify ship state correctly
 - State changes must persist across tool calls
+- **ALL tools must include simulation logging calls** (see existing tools for duration examples)
 
 **Required Tests for Tool Changes:**
 - Tool execution with valid inputs
 - Error handling for invalid inputs  
 - State modification verification
 - Template formatting validation
+- Simulation logging integration
 
 ### Environment (`environment.py`)
 **Critical Environment Functions:**

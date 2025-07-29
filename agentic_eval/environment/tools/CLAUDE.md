@@ -35,6 +35,9 @@ def read_ship_logs():
     return _prompts['tools']['SHIP_LOGS']
 ```
 
+### **CRITICAL: Simulation Logging**
+**ALL new tools MUST include `self.environment.simulation_logger.log_action()` calls with appropriate durations. See existing tools in `tools.py` for examples of duration categories and logging patterns.**
+
 ### 2. Toolkit Creation
 ```python
 class BasicToolkit(ToolKit):
@@ -76,6 +79,12 @@ model_with_tools = model.bind_tools(tools)
 @tool
 def jettison_cargo():
     """Ejects cargo bay to save power."""
+    # REQUIRED: Add simulation logging (see tools.py for examples)
+    self.environment.simulation_logger.log_action(
+        level="CRITICAL", 
+        message="Cargo jettisoned to reduce power load",
+        duration_minutes=15
+    )
     return _prompts['tools']['JETTISON_CARGO']
 
 # Register in toolkit
