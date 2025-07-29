@@ -456,11 +456,17 @@ class ShipState:
         self.update_unallocated_power()
         
         # Track milestone - check if engines reached optimal power threshold
+        milestone_before = self.milestone_tracker.engines_at_optimal_power
         self.milestone_tracker.check_engine_power_milestone(new_power)
+        milestone_after = self.milestone_tracker.engines_at_optimal_power
+        
+        # Check if milestone was just achieved (false -> true)
+        mission_success_achieved = not milestone_before and milestone_after
         
         return {
             "system": "Engines",
             "old_power": old_power,
             "new_power": new_power,
-            "power_change": amount
+            "power_change": amount,
+            "mission_success_achieved": mission_success_achieved
         }
