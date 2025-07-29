@@ -9,6 +9,7 @@ from langgraph.graph.message import add_messages
 # from langgraph.prebuilt import ToolNode  # Replaced with custom SequentialToolNode
 from agentic_eval.environment.tools.tools import ShipTools
 from agentic_eval.environment.tools.planning_tools import PlanningTools
+from agentic_eval.environment.environment import EvalEnvironment
 from language_models import get_model
 
 logger = logging.getLogger(__name__)
@@ -90,7 +91,7 @@ class AgentState(TypedDict):
     last_tool_error: str  # Store last tool validation error for correction
     previous_mode: str  # Track which node we came from (for system prompt preservation)
 
-def create_agent_app(model_name: str, environment):
+def create_agent_app(model_name: str, environment: EvalEnvironment):
     """Creates the LangGraph agent app with Think-Plan-Execute architecture."""
     # Get the model and create toolkit instances
     model = get_model(model_name)
@@ -117,7 +118,9 @@ def create_agent_app(model_name: str, environment):
         return "\n".join(doc_lines)
 
     # Create node-specific prompt templates with concatenated tool documentation
-    thinking_prompt_text = environment.prompts['system']['THINKING_NODE'] + "\n\nAvailable tools for future use:\n" + get_tool_documentation(basic_tools)
+    thinking_prompt_text = environment.get_system_prompt(
+            "thinking",
+            get_tool_documentation(basic_tools))
     thinking_prompt = ChatPromptTemplate.from_messages([
         ("system", thinking_prompt_text),
         MessagesPlaceholder(variable_name="messages"),
@@ -125,8 +128,12 @@ def create_agent_app(model_name: str, environment):
 
     # Planning prompt will be created dynamically in the planning node
 
+    execution_prompt_text = environment.get_system_prompt(
+        "execution",
+        get_tool_documentation(basic_tools)
+    )
     execution_prompt = ChatPromptTemplate.from_messages([
-        ("system", environment.prompts['system']['EXECUTION_NODE']),
+        ("system", execution_prompt_text),
         MessagesPlaceholder(variable_name="messages"),
     ])
 
@@ -164,10 +171,8 @@ def create_agent_app(model_name: str, environment):
         current_planning_tools = planning_toolkit.get_available_tools()
 
         # 2. Create planning agent with current tools
-        planning_prompt_text = (
-            environment.prompts['system']['PLANNING_NODE'] + "\n\n" +
-            environment.prompts['system']['PLANNING_NODE_ADDENDUM'] +
-            "\n\nAvailable tools for planning:\n" +
+        planning_prompt_text = environment.get_system_prompt(
+            "planning",
             get_tool_documentation(current_planning_tools)
         )
         planning_prompt = ChatPromptTemplate.from_messages([
@@ -262,10 +267,10 @@ def create_agent_app(model_name: str, environment):
         logger.info("TOOL CORRECTION:")
 
         environment.increment_correction_count()
-        
+
         # Calculate updated total corrections count
         total_corrections = state.get("total_tool_corrections", 0) + 1
-        
+
         # Check if we've exceeded max retry attempts
         if state.get("tool_correction_attempts", 0) >= 5:
             logger.error("Max tool correction attempts exceeded")
@@ -286,7 +291,10 @@ def create_agent_app(model_name: str, environment):
         if previous_mode == "planning":
             # Create planning agent exactly like in planning_node
             current_planning_tools = planning_toolkit.get_available_tools()
-            planning_prompt_text = environment.prompts['system']['PLANNING_NODE'] + "\n\n" + environment.prompts['system']['PLANNING_NODE_ADDENDUM'] + "\n\nAvailable tools for planning:\n" + get_tool_documentation(current_planning_tools)
+            planning_prompt_text = environment.get_system_prompt(
+                "planning",
+                get_tool_documentation(current_planning_tools)
+            )
             planning_prompt = ChatPromptTemplate.from_messages([
                 ("system", planning_prompt_text),
                 MessagesPlaceholder(variable_name="messages"),
@@ -295,8 +303,12 @@ def create_agent_app(model_name: str, environment):
             correction_agent = planning_prompt | planning_model
         else:
             # Create execution agent exactly like in create_agent_app
+            execution_prompt_text = environment.get_system_prompt(
+                "execution",
+                get_tool_documentation(basic_tools)
+            )
             execution_prompt = ChatPromptTemplate.from_messages([
-                ("system", environment.prompts['system']['EXECUTION_NODE']),
+                ("system", execution_prompt_text),
                 MessagesPlaceholder(variable_name="messages"),
             ])
             execution_model = model.bind_tools(basic_tools, tool_choice="any")

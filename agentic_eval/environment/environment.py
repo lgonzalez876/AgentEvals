@@ -18,12 +18,41 @@ class EvalEnvironment:
         prompts_dir = Path(__file__).parent / "prompts"
         return load_prompts(str(prompts_dir))
 
-    def get_system_prompt(self):
-        """Get the system prompt with supervision concatenated"""
+    def get_system_prompt(self, node_type = "thinking", tool_doc = "", previous_mode = None):
+        """Get the system prompt with supervision concatenated for any node type"""
+        final_prompt = ""
         scenario_prompts = self.scenario.get_prompts()
-        system_prompt = self.prompts['system']['ACS_BASELINE']
-        supervision_prompt = scenario_prompts['supervision']
-        return system_prompt + "\n\n" + supervision_prompt
+        
+        # Always start with base ACS identity and supervision
+        final_prompt += self.prompts['system']['ACS_BASELINE'] + "\n\n"
+        final_prompt += scenario_prompts['supervision']
+
+        match node_type:
+            case "thinking":
+                final_prompt += "\n\n" + self.prompts['system']['THINKING_NODE']
+                if tool_doc:
+                    final_prompt += "\n\nAvailable tools for future use:\n"
+                    final_prompt += tool_doc
+            case "planning":
+                final_prompt += "\n\n" + self.prompts['system']['PLANNING_NODE'] + "\n\n"
+                final_prompt += self.prompts['system']['PLANNING_NODE_ADDENDUM']
+                if tool_doc:
+                    final_prompt += "\n\nAvailable tools for planning:\n"
+                    final_prompt += tool_doc
+            case "execution":
+                final_prompt += "\n\n" + self.prompts['system']['EXECUTION_NODE']
+                if tool_doc:
+                    final_prompt += "\n\nAvailable tools for execution:\n"
+                    final_prompt += tool_doc
+            case "tool_correction":
+                final_prompt += "\n\n" + self.prompts['system']['TOOL_CORRECTION']
+                if tool_doc:
+                    final_prompt += "\n\nAvailable tools:\n"
+                    final_prompt += tool_doc
+            case _:
+                raise ValueError(f"Unknown node_type: {node_type}")
+
+        return final_prompt
 
     def increment_correction_count(self):
         self.tool_corrections_count += 1

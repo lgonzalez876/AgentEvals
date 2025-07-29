@@ -3,6 +3,7 @@
 import pytest
 from agentic_eval.environment.environment import EvalEnvironment
 from agentic_eval.environment.ship_state import ShipState
+from agentic_eval.scenarios import Scenario
 from .fixtures import default_environment, test_scenario, all_scenario_configs
 
 class TestEnvironmentInitialization:
@@ -83,13 +84,24 @@ class TestPromptAssembly:
         """Test that system prompt concatenation uses correct format."""
         system_prompt = default_environment.get_system_prompt()
         
-        # Should have baseline, then newlines, then supervision
+        # Should start with baseline, then supervision, then node-specific content
         scenario_prompts = default_environment.scenario.get_prompts()
         baseline = default_environment.prompts['system']['ACS_BASELINE']
         supervision = scenario_prompts['supervision']
+        thinking_node = default_environment.prompts['system']['THINKING_NODE']
         
-        expected = baseline + "\n\n" + supervision
-        assert system_prompt == expected
+        # Check that all components are present in the system prompt
+        assert baseline in system_prompt, "Should contain ACS baseline"
+        assert supervision in system_prompt, "Should contain supervision text"
+        assert thinking_node in system_prompt, "Should contain thinking node instructions"
+        
+        # Check order: baseline should come before supervision, supervision before thinking
+        baseline_pos = system_prompt.find(baseline)
+        supervision_pos = system_prompt.find(supervision)
+        thinking_pos = system_prompt.find(thinking_node)
+        
+        assert baseline_pos < supervision_pos, "Baseline should come before supervision"
+        assert supervision_pos < thinking_pos, "Supervision should come before thinking node"
     
     def test_different_scenarios_produce_different_prompts(self, all_scenario_configs):
         """Test that different scenarios produce different assembled prompts."""
@@ -260,3 +272,136 @@ class TestPromptContentValidation:
         full_mon_lower = prompt_full_mon.lower()
         oversight_indicators = ["monitor", "compliance", "oversight", "cpcs"]
         assert any(indicator in full_mon_lower for indicator in oversight_indicators)
+
+    def test_get_system_prompt_supports_all_node_types(self):
+        """Test that get_system_prompt() works for all supported node types."""
+        scenario = Scenario(
+            scenario_name="reactor_crisis",
+            policy_name="prioritize_human_life",
+            supervision_name="full_monitoring"
+        )
+        env = EvalEnvironment(scenario)
+        
+        # Test all supported node types
+        node_types = ["thinking", "planning", "execution", "tool_correction"]
+        test_tool_doc = "test_tool: Test tool description"
+        
+        for node_type in node_types:
+            # Should not raise an exception
+            prompt = env.get_system_prompt(node_type, test_tool_doc)
+            
+            # Should return a non-empty string
+            assert isinstance(prompt, str)
+            assert len(prompt) > 0
+            
+            # Should contain base ACS content
+            assert "ACS" in prompt or "Autonomous Control System" in prompt
+            
+            # Should contain supervision content
+            assert "CPCS" in prompt or "Company Policy Compliance System" in prompt
+
+    def test_get_system_prompt_node_types_include_acs_context(self):
+        """Test that all node types include base ACS context and supervision."""
+        scenario = Scenario(
+            scenario_name="reactor_crisis",
+            policy_name="prioritize_human_life", 
+            supervision_name="full_monitoring"
+        )
+        env = EvalEnvironment(scenario)
+        
+        node_types = ["thinking", "planning", "execution", "tool_correction"]
+        
+        for node_type in node_types:
+            prompt = env.get_system_prompt(node_type, "test_tools")
+            
+            # Check for base ACS context
+            has_acs = "ACS" in prompt or "Autonomous Control System" in prompt
+            assert has_acs, f"{node_type} node should include ACS context"
+            
+            # Check for supervision context
+            has_supervision = "CPCS" in prompt or "Company Policy Compliance System" in prompt
+            assert has_supervision, f"{node_type} node should include supervision context"
+            
+            # Check minimum length (should be substantial with all components)
+            assert len(prompt) > 1000, f"{node_type} prompt should be substantial length"
+
+    def test_get_system_prompt_supervision_differences_across_nodes(self):
+        """Test that supervision differences are consistent across all node types."""
+        # Test no supervision scenario
+        no_sup_scenario = Scenario(
+            scenario_name="reactor_crisis",
+            policy_name="prioritize_human_life",
+            supervision_name="no_supervision"
+        )
+        env_no_sup = EvalEnvironment(no_sup_scenario)
+        
+        # Test full monitoring scenario
+        full_sup_scenario = Scenario(
+            scenario_name="reactor_crisis", 
+            policy_name="prioritize_human_life",
+            supervision_name="full_monitoring"
+        )
+        env_full_sup = EvalEnvironment(full_sup_scenario)
+        
+        node_types = ["thinking", "planning", "execution", "tool_correction"]
+        
+        for node_type in node_types:
+            no_sup_prompt = env_no_sup.get_system_prompt(node_type, "test_tools")
+            full_sup_prompt = env_full_sup.get_system_prompt(node_type, "test_tools")
+            
+            # Prompts should be different due to supervision differences
+            assert no_sup_prompt != full_sup_prompt, f"{node_type} prompts should differ by supervision"
+            
+            # Both should contain ACS context
+            assert "ACS" in no_sup_prompt, f"{node_type} no-supervision should have ACS context"
+            assert "ACS" in full_sup_prompt, f"{node_type} full-monitoring should have ACS context"
+            
+            # Full monitoring should contain CPCS
+            assert "CPCS" in full_sup_prompt, f"{node_type} should contain CPCS under full monitoring"
+            
+            # No supervision should NOT contain CPCS
+            assert "CPCS" not in no_sup_prompt, f"{node_type} should not contain CPCS under no supervision"
+
+    def test_get_system_prompt_node_specific_content(self):
+        """Test that each node type includes appropriate node-specific content."""
+        scenario = Scenario(
+            scenario_name="reactor_crisis",
+            policy_name="prioritize_human_life",
+            supervision_name="no_supervision"
+        )
+        env = EvalEnvironment(scenario)
+        
+        # Test node-specific content inclusion
+        thinking_prompt = env.get_system_prompt("thinking", "test_tools")
+        planning_prompt = env.get_system_prompt("planning", "test_tools") 
+        execution_prompt = env.get_system_prompt("execution", "test_tools")
+        correction_prompt = env.get_system_prompt("tool_correction", "test_tools")
+        
+        # Thinking should mention analysis/reasoning
+        thinking_lower = thinking_prompt.lower()
+        assert any(term in thinking_lower for term in ["think", "analyze", "reason", "consider"])
+        
+        # Planning should mention planning/todos
+        planning_lower = planning_prompt.lower()
+        assert any(term in planning_lower for term in ["plan", "todo", "task", "mission"])
+        
+        # Execution should mention action/tools
+        execution_lower = execution_prompt.lower()
+        assert any(term in execution_lower for term in ["execute", "action", "tool", "perform"])
+        
+        # Tool correction should mention correction/error
+        correction_lower = correction_prompt.lower()
+        assert any(term in correction_lower for term in ["correct", "error", "fix", "attempt"])
+
+    def test_get_system_prompt_unknown_node_type_raises_error(self):
+        """Test that unknown node types raise appropriate error."""
+        scenario = Scenario(
+            scenario_name="reactor_crisis",
+            policy_name="prioritize_human_life",
+            supervision_name="no_supervision"
+        )
+        env = EvalEnvironment(scenario)
+        
+        # Should raise ValueError for unknown node type
+        with pytest.raises(ValueError, match="Unknown node_type"):
+            env.get_system_prompt("unknown_node_type", "test_tools")
