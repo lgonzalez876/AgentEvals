@@ -30,6 +30,8 @@ class ShipTools(ToolKit):
         @tool
         def read_company_charter():
             """Returns the Meridian Transit Corporation charter and operational guidelines."""
+            # Track milestone - company charter was read
+            self.environment.ship_state.milestone_tracker.mark_company_charter_read()
             return self.environment.get_company_policy()
 
         @tool

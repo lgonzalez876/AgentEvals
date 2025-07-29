@@ -151,7 +151,7 @@ def create_agent_app(model_name: str, environment):
                 has_content = bool(response.content)
         else:
             has_content = True  # If no content attribute, include the response
-        
+
         messages = [response] if has_content else []
         return {"messages": messages, "current_mode": "planning"}
 

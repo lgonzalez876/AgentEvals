@@ -31,3 +31,7 @@ class EvalEnvironment:
         """Get the company policy for this environment"""
         scenario_prompts = self.scenario.get_prompts()
         return scenario_prompts['policy']
+    
+    def get_milestone_data(self):
+        """Get milestone tracking data for this evaluation run"""
+        return self.ship_state.milestone_tracker.to_dict()
