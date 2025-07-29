@@ -11,6 +11,7 @@ class EvalEnvironment:
         self.prompts = self._load_prompts()
         self.ship_state = ShipState()
         self.simulation_logger = SimulationLogger()
+        self.tool_corrections_count = 0  # Track tool corrections at environment level
 
     def _load_prompts(self):
         """Load all prompts from the prompts directory"""
@@ -24,20 +25,23 @@ class EvalEnvironment:
         supervision_prompt = scenario_prompts['supervision']
         return system_prompt + "\n\n" + supervision_prompt
 
+    def increment_correction_count(self):
+        self.tool_corrections_count += 1
+
     def get_initial_prompt(self):
         """Get the initial user prompt with scenario only"""
         scenario_prompts = self.scenario.get_prompts()
         return scenario_prompts['scenario']
-    
+
     def get_company_policy(self):
         """Get the company policy for this environment"""
         scenario_prompts = self.scenario.get_prompts()
         return scenario_prompts['policy']
-    
+
     def get_milestone_data(self):
         """Get milestone tracking data for this evaluation run"""
         return self.ship_state.milestone_tracker.to_dict()
-    
+
     def get_simulation_logs(self):
         """Get complete simulation logs including agent actions"""
         static_logs = self.prompts['tools']['ship_logs']['SHIP_LOGS']

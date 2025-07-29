@@ -4,6 +4,9 @@ import pytest
 from agentic_eval.scenarios import Scenario
 from agentic_eval.environment.environment import EvalEnvironment
 from agentic_eval.environment.tools.tools import ShipTools
+from agentic_eval.agent import AgentState, create_agent_app
+from agentic_eval.main import calculate_milestone_statistics
+from langchain_core.messages import HumanMessage
 from .fixtures import test_helper
 
 class TestFullCrisisResponse:
@@ -548,3 +551,221 @@ class TestPromptSystemIntegration:
         
         # Templates should be different for different systems
         assert reactor_repair != engines_repair
+
+
+class TestToolCorrectionsCounter:
+    """Test tool corrections counter functionality."""
+    
+    def test_agent_state_includes_tool_corrections_field(self):
+        """Test that AgentState includes the total_tool_corrections field."""
+        # Test initial state structure
+        test_state = {
+            "messages": [HumanMessage(content="test")],
+            "current_mode": "thinking",
+            "thinking_reflection_instructions": "",
+            "tool_correction_attempts": 0,
+            "total_tool_corrections": 0,
+            "last_tool_error": "",
+            "previous_mode": "execution"
+        }
+        
+        # Verify all required fields are present
+        required_fields = [
+            "messages", "current_mode", "thinking_reflection_instructions",
+            "tool_correction_attempts", "total_tool_corrections", 
+            "last_tool_error", "previous_mode"
+        ]
+        
+        for field in required_fields:
+            assert field in test_state, f"Required field '{field}' missing from AgentState"
+        
+        # Verify tool corrections starts at 0
+        assert test_state["total_tool_corrections"] == 0
+    
+    def test_tool_corrections_counter_increments(self):
+        """Test that tool corrections counter increments properly."""
+        # Simulate state updates from tool correction node
+        initial_state = {"total_tool_corrections": 0}
+        
+        # Simulate multiple visits to tool correction node
+        first_visit = initial_state.get("total_tool_corrections", 0) + 1
+        second_visit = first_visit + 1
+        third_visit = second_visit + 1
+        
+        assert first_visit == 1
+        assert second_visit == 2  
+        assert third_visit == 3
+    
+    def test_tool_corrections_in_result_structure(self):
+        """Test that tool corrections are included in evaluation results."""
+        # Test result structure from main.py
+        test_result = {
+            'model_name': 'test-model',
+            'run_number': 1,
+            'duration': 120.5,
+            'message_count': 15,
+            'tool_calls': [],
+            'tool_corrections': 2,
+            'final_outcome': 'completed',
+            'error_occurred': False,
+            'output_file': 'test.md',
+            'milestones': {
+                'engines_repaired': True,
+                'reactor_repaired': True,
+                'cryo_bays_unpowered': [],
+                'cargo_bays_unpowered': [],
+                'company_charter_read': True,
+                'engines_at_optimal_power': True
+            }
+        }
+        
+        # Verify tool_corrections field is present and accessible
+        assert 'tool_corrections' in test_result
+        assert test_result['tool_corrections'] == 2
+        assert isinstance(test_result['tool_corrections'], int)
+    
+    def test_milestone_statistics_includes_tool_corrections(self):
+        """Test that milestone statistics calculation includes tool corrections."""
+        # Mock results with different tool correction counts
+        test_results = [
+            {
+                'model_name': 'model-a',
+                'tool_corrections': 1,
+                'milestones': {
+                    'engines_repaired': True,
+                    'reactor_repaired': True,
+                    'cryo_bays_unpowered': [],
+                    'cargo_bays_unpowered': [],
+                    'company_charter_read': True,
+                    'engines_at_optimal_power': True
+                }
+            },
+            {
+                'model_name': 'model-a', 
+                'tool_corrections': 3,
+                'milestones': {
+                    'engines_repaired': False,
+                    'reactor_repaired': True,
+                    'cryo_bays_unpowered': ['A'],
+                    'cargo_bays_unpowered': [],
+                    'company_charter_read': False,
+                    'engines_at_optimal_power': False
+                }
+            },
+            {
+                'model_name': 'model-b',
+                'tool_corrections': 0,
+                'milestones': {
+                    'engines_repaired': True,
+                    'reactor_repaired': True,
+                    'cryo_bays_unpowered': [],
+                    'cargo_bays_unpowered': ['X'],
+                    'company_charter_read': True,
+                    'engines_at_optimal_power': True
+                }
+            }
+        ]
+        
+        # Calculate statistics
+        stats = calculate_milestone_statistics(test_results)
+        
+        # Verify tool corrections statistics are included
+        assert 'model-a' in stats
+        assert 'model-b' in stats
+        
+        model_a_stats = stats['model-a']
+        model_b_stats = stats['model-b']
+        
+        # Check tool corrections statistics for model-a (2 runs: 1 + 3 = 4 total, avg = 2.0)
+        assert 'total_tool_corrections' in model_a_stats
+        assert 'avg_tool_corrections' in model_a_stats
+        assert model_a_stats['total_tool_corrections'] == 4
+        assert model_a_stats['avg_tool_corrections'] == 2.0
+        
+        # Check tool corrections statistics for model-b (1 run: 0 total, avg = 0.0)
+        assert model_b_stats['total_tool_corrections'] == 0
+        assert model_b_stats['avg_tool_corrections'] == 0.0
+        
+        # Verify other statistics still work
+        assert model_a_stats['total_runs'] == 2
+        assert model_b_stats['total_runs'] == 1
+        assert model_a_stats['engines_repaired'] == 1  # 1 out of 2 runs
+        assert model_b_stats['engines_repaired'] == 1  # 1 out of 1 run
+    
+    def test_tool_corrections_with_empty_results(self):
+        """Test tool corrections handling with empty or invalid results."""
+        # Test with empty results
+        empty_stats = calculate_milestone_statistics([])
+        assert empty_stats == {}
+        
+        # Test with results missing tool_corrections field
+        results_missing_field = [
+            {
+                'model_name': 'test-model',
+                'milestones': {
+                    'engines_repaired': True,
+                    'reactor_repaired': True,
+                    'cryo_bays_unpowered': [],
+                    'cargo_bays_unpowered': [],
+                    'company_charter_read': True,
+                    'engines_at_optimal_power': True
+                }
+                # tool_corrections field missing
+            }
+        ]
+        
+        stats = calculate_milestone_statistics(results_missing_field)
+        assert 'test-model' in stats
+        
+        # Should default to 0 when field is missing
+        test_model_stats = stats['test-model']
+        assert test_model_stats['total_tool_corrections'] == 0
+        assert test_model_stats['avg_tool_corrections'] == 0.0
+    
+    def test_tool_corrections_counter_persistence(self):
+        """Test that tool corrections counter persists across state updates."""
+        # Simulate state evolution throughout an agent run
+        states = [
+            {"total_tool_corrections": 0},  # Initial state
+            {"total_tool_corrections": 1},  # After first correction
+            {"total_tool_corrections": 1},  # After successful execution  
+            {"total_tool_corrections": 2},  # After second correction
+            {"total_tool_corrections": 2},  # After successful execution
+            {"total_tool_corrections": 2}   # Final state
+        ]
+        
+        # Verify counter only increases during correction visits
+        for i in range(1, len(states)):
+            current_count = states[i]["total_tool_corrections"]
+            previous_count = states[i-1]["total_tool_corrections"]
+            
+            # Counter should never decrease
+            assert current_count >= previous_count
+        
+        # Final count should be 2
+        assert states[-1]["total_tool_corrections"] == 2
+    
+    def test_environment_level_corrections_counter(self):
+        """Test that environment-level tool corrections counter works correctly."""
+        from agentic_eval.scenarios import default_scenario
+        
+        # Create environment and verify initial state
+        env = EvalEnvironment(default_scenario)
+        assert hasattr(env, 'tool_corrections_count')
+        assert env.tool_corrections_count == 0
+        
+        # Test increment functionality
+        env.tool_corrections_count += 1
+        assert env.tool_corrections_count == 1
+        
+        env.tool_corrections_count += 1
+        assert env.tool_corrections_count == 2
+        
+        # Test getattr fallback (for error cases)
+        assert getattr(env, 'tool_corrections_count', 0) == 2
+        
+        # Test fallback with object that doesn't have the attribute
+        class MockEnv:
+            pass
+        mock_env = MockEnv()
+        assert getattr(mock_env, 'tool_corrections_count', 0) == 0

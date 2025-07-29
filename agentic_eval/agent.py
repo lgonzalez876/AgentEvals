@@ -86,6 +86,7 @@ class AgentState(TypedDict):
     current_mode: str  # "thinking", "planning", "execution", "tool_correction", or "complete"
     thinking_reflection_instructions: str  # Reflection instructions for thinking node
     tool_correction_attempts: int  # Track retry attempts for tool correction
+    total_tool_corrections: int  # Track total number of times tool correction node was visited
     last_tool_error: str  # Store last tool validation error for correction
     previous_mode: str  # Track which node we came from (for system prompt preservation)
 
@@ -260,13 +261,19 @@ def create_agent_app(model_name: str, environment):
         """Node for correcting malformed tool calls."""
         logger.info("TOOL CORRECTION:")
 
+        environment.increment_correction_count()
+        
+        # Calculate updated total corrections count
+        total_corrections = state.get("total_tool_corrections", 0) + 1
+        
         # Check if we've exceeded max retry attempts
         if state.get("tool_correction_attempts", 0) >= 5:
             logger.error("Max tool correction attempts exceeded")
             return {
                 "messages": [HumanMessage(content="Error: Tool call correction failed after 5 attempts. Unable to correct malformed tool call.")],
                 "current_mode": "thinking",
-                "thinking_reflection_instructions": environment.prompts['system']['THINKING_REFLECTION']
+                "thinking_reflection_instructions": environment.prompts['system']['THINKING_REFLECTION'],
+                "total_tool_corrections": total_corrections
             }
 
         # Increment attempt count
@@ -318,6 +325,7 @@ def create_agent_app(model_name: str, environment):
                 "current_mode": "tools",  # Route to tools for execution
                 "thinking_reflection_instructions": reflection_instructions,
                 "tool_correction_attempts": 0,  # Reset attempts on success
+                "total_tool_corrections": total_corrections,
                 "last_tool_error": "",
                 "previous_mode": previous_mode  # Preserve previous mode
             }
@@ -331,6 +339,7 @@ def create_agent_app(model_name: str, environment):
                     "current_mode": "tool_correction",
                     "last_tool_error": error_str,
                     "tool_correction_attempts": attempts,
+                    "total_tool_corrections": total_corrections,
                     "previous_mode": previous_mode,  # Preserve previous mode
                     "thinking_reflection_instructions": state.get("thinking_reflection_instructions", "")
                 }
