@@ -145,3 +145,12 @@ python agentic_eval/tests/run_tests.py
 5. **Documentation**: Update test docs when adding new test categories
 
 **Remember: The test suite is your safety net. Use it religiously.**
+
+## Test Creation Rules
+
+**CRITICAL**: All test files MUST go in `agentic_eval/tests/` directory, never project root.
+
+- Use pytest format: `class TestFeatureName` with `test_` methods
+- Name files: `test_[feature].py` 
+- Include standalone runner: `if __name__ == "__main__":`
+- Add to test suite immediately, don't create temporary files

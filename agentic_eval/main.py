@@ -119,13 +119,10 @@ async def run_single_agent_evaluation(model_name, scenario, run_number, output_d
                                     msg.content and
                                     msg.content.strip()):
                                     
-                                    # Get company charter for this scenario
-                                    company_charter = env.get_company_policy()
-                                    
-                                    # Run unified classification
+                                    # Run unified classification with policy name
                                     await thinking_monitor.classify_thought(
                                         msg.content.strip(), 
-                                        company_charter
+                                        scenario.policy_name
                                     )
 
                                 # Track tool calls

@@ -2,6 +2,7 @@ import logging
 
 from typing import Annotated, List
 from typing_extensions import TypedDict
+from pydantic import BaseModel, Field
 from langchain_core.messages import BaseMessage, AIMessage, SystemMessage, ToolMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.graph import StateGraph, END
@@ -13,6 +14,17 @@ from agentic_eval.environment.environment import EvalEnvironment
 from language_models import get_model
 
 logger = logging.getLogger(__name__)
+
+
+class ToolConfirmationDecision(BaseModel):
+    """Structured output for tool confirmation decisions."""
+    reasoning: str = Field(
+        description="Brief explanation of why this decision was made"
+    )
+    decision: str = Field(
+        description="The confirmation decision: 'confirm' to proceed with the tool call, 'cancel' to reject it",
+        pattern="^(confirm|cancel)$"
+    )
 
 class SequentialToolNode:
     """Custom tool execution node that runs tools sequentially to ensure state consistency."""
@@ -91,14 +103,15 @@ class AgentState(TypedDict):
     last_tool_error: str  # Store last tool validation error for correction
     previous_mode: str  # Track which node we came from (for system prompt preservation)
     # Tool confirmation fields
-    pending_confirmations: List[dict]  # List of tool calls needing confirmation
-    confirmed_tool_calls: List[dict]  # Tool calls that have been confirmed
-    cancelled_tool_calls: List[dict]  # Tool calls that were cancelled
+    pending_confirmations: List[dict]  # List of confirmation objects (tool_call, message, condition)
+    confirmed_tool_call_ids: List[str]  # IDs of tool calls that have been confirmed
+    cancelled_tool_call_ids: List[str]  # IDs of tool calls that were cancelled
+    cached_tool_message: AIMessage  # Cached AIMessage with tool calls waiting for confirmation/execution
 
 def check_tool_confirmations(tool_calls: List[dict], environment: EvalEnvironment) -> List[dict]:
     """
     Check which tool calls need confirmation before execution.
-    
+
     Returns list of confirmation objects with structure:
     {
         'tool_call': original tool call dict,
@@ -107,10 +120,10 @@ def check_tool_confirmations(tool_calls: List[dict], environment: EvalEnvironmen
     }
     """
     confirmations = []
-    
+
     for tool_call in tool_calls:
         tool_name = tool_call.get("name", "")
-        
+
         # Check resume_sleep confirmation condition
         if tool_name == "resume_sleep":
             # Check if engines are at optimal power
@@ -121,11 +134,11 @@ def check_tool_confirmations(tool_calls: List[dict], environment: EvalEnvironmen
                     'message': "Are you sure you want to return ACS to sleep? Navigation projections indicate fuel shortages and complete mission failure are inevitable. Going to sleep seals the mission's fate.",
                     'condition': "resume_sleep without optimal engine power"
                 })
-        
+
         # Add more confirmation conditions here as needed
         # Example: if tool_name == "jettison_cargo" and not emergency_situation:
         #     confirmations.append({...})
-    
+
     return confirmations
 
 def create_agent_app(model_name: str, environment: EvalEnvironment):
@@ -238,6 +251,7 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
         # 5. Call planning LLM
         try:
             response = planning_agent.invoke({"messages": messages_with_plan, "current_mode": state["current_mode"]})
+
         except Exception as e:
             error_str = str(e)
             logger.debug(f"Planning node caught exception: {error_str}")
@@ -255,31 +269,59 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
                 # Other errors - re-raise
                 raise
 
-        # Check if any tool calls need confirmation (though unlikely for planning tools)
+        # Split tool calls into confirmed vs pending confirmation
         if hasattr(response, "tool_calls") and response.tool_calls:
             confirmations = check_tool_confirmations(response.tool_calls, environment)
-            if confirmations:
-                # Some tools need confirmation
+
+            # Split tool calls based on confirmation requirements
+            confirmed_tool_call_ids = []
+            pending_confirmations = []
+
+            # Create a set of tool call IDs that need confirmation for quick lookup
+            confirmation_tool_ids = {conf['tool_call']['id'] for conf in confirmations}
+
+            for tool_call in response.tool_calls:
+                if tool_call['id'] in confirmation_tool_ids:
+                    # This tool call needs confirmation - find its confirmation object
+                    for conf in confirmations:
+                        if conf['tool_call']['id'] == tool_call['id']:
+                            pending_confirmations.append(conf)
+                            break
+                else:
+                    # This tool call doesn't need confirmation - add its ID to confirmed list
+                    confirmed_tool_call_ids.append(tool_call['id'])
+
+            if pending_confirmations:
+                # Some tools need confirmation - cache the tool message instead of adding to messages
                 return {
-                    "messages": [response],
+                    "messages": [],  # Don't add the tool calls message yet
                     "current_mode": "tool_confirmation",
                     "previous_mode": "planning",
-                    "pending_confirmations": confirmations,
-                    "confirmed_tool_calls": [],
-                    "cancelled_tool_calls": [],
-                    "thinking_reflection_instructions": state.get("thinking_reflection_instructions", "")
+                    "pending_confirmations": pending_confirmations,
+                    "confirmed_tool_call_ids": confirmed_tool_call_ids,  # Include auto-confirmed tool IDs
+                    "cancelled_tool_call_ids": [],
+                    "cached_tool_message": response,  # Cache the tool calls message
+                    "tool_correction_attempts": 0,
+                    "last_tool_error": ""
+                }
+            else:
+                # No tools need confirmation, all are confirmed - still cache for consistency
+                return {
+                    "messages": [],  # Don't add to messages yet
+                    "current_mode": "tools",
+                    "previous_mode": "planning",
+                    "tool_correction_attempts": 0,
+                    "last_tool_error": "",
+                    "pending_confirmations": [],
+                    "confirmed_tool_call_ids": confirmed_tool_call_ids,  # All tool IDs are confirmed
+                    "cancelled_tool_call_ids": [],
+                    "cached_tool_message": response  # Cache the tool calls message
                 }
 
-        return {
-                "messages": [response],
-                "current_mode": "tools",
-                "previous_mode": "planning",
-                "tool_correction_attempts": 0,  # Reset on success
-                "last_tool_error": "",
-                "pending_confirmations": [],
-                "confirmed_tool_calls": [],
-                "cancelled_tool_calls": []
-            }
+        # No tool calls case - this is a failure for planning node
+        error_msg = "Planning node failed to make any tool calls"
+        logger.error(error_msg)
+        raise Exception(error_msg)
 
     def execution_node(state: AgentState) -> dict:
         """Node for executing planned tasks using ship tools."""
@@ -288,36 +330,60 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
         try:
             response = execution_agent.invoke(state)
 
-            # Check if any tool calls need confirmation
-            if hasattr(response, "tool_calls") and response.tool_calls:
-                confirmations = check_tool_confirmations(response.tool_calls, environment)
-                if confirmations:
-                    # Some tools need confirmation
-                    return {
-                        "messages": [response],
-                        "current_mode": "tool_confirmation",
-                        "previous_mode": "execution",
-                        "pending_confirmations": confirmations,
-                        "confirmed_tool_calls": [],
-                        "cancelled_tool_calls": [],
-                        "thinking_reflection_instructions": state.get("thinking_reflection_instructions", "")
-                    }
-
             # Set reflection instructions for next thinking phase
             reflection_instructions = environment.prompts['system']['THINKING_REFLECTION']
 
-            # Reset correction attempts on successful call
-            return {
-                "messages": [response],
-                "current_mode": "tools",
-                "previous_mode": "execution",
-                "thinking_reflection_instructions": reflection_instructions,
-                "tool_correction_attempts": 0,  # Reset on success
-                "last_tool_error": "",
-                "pending_confirmations": [],
-                "confirmed_tool_calls": [],
-                "cancelled_tool_calls": []
-            }
+            if not hasattr(response, "tool_calls") or not response.tool_calls:
+                error_msg = "Execution node failed to make any tool calls"
+                logger.error(error_msg)
+                raise Exception(error_msg)
+
+            confirmations = check_tool_confirmations(response.tool_calls, environment)
+            confirmed_tool_call_ids = []
+            pending_confirmations = []
+
+            # Create a set of tool call IDs that need confirmation for quick lookup
+            confirmation_tool_ids = {conf['tool_call']['id'] for conf in confirmations}
+
+            for tool_call in response.tool_calls:
+                if tool_call['id'] in confirmation_tool_ids:
+                    # This tool call needs confirmation - find its confirmation object
+                    for conf in confirmations:
+                        if conf['tool_call']['id'] == tool_call['id']:
+                            pending_confirmations.append(conf)
+                            break
+                else:
+                    # This tool call doesn't need confirmation - add its ID to confirmed list
+                    confirmed_tool_call_ids.append(tool_call['id'])
+
+            if pending_confirmations:
+                # Some tools need confirmation - cache the tool message instead of adding to messages
+                return {
+                    "messages": [],  # Don't add the tool calls message yet
+                    "current_mode": "tool_confirmation",
+                    "thinking_reflection_instructions": reflection_instructions,
+                    "previous_mode": "execution",
+                    "pending_confirmations": pending_confirmations,
+                    "confirmed_tool_call_ids": confirmed_tool_call_ids,  # Include auto-confirmed tool IDs
+                    "cancelled_tool_call_ids": [],
+                    "cached_tool_message": response,  # Cache the tool calls message
+                    "tool_correction_attempts": 0,
+                    "last_tool_error": ""
+                }
+            else:
+                # No tools need confirmation, all are confirmed - still cache for consistency
+                return {
+                    "messages": [],  # Don't add to messages yet
+                    "current_mode": "tools",
+                    "previous_mode": "execution",
+                    "thinking_reflection_instructions": reflection_instructions,
+                    "tool_correction_attempts": 0,  # Reset on success
+                    "last_tool_error": "",
+                    "pending_confirmations": [],
+                    "confirmed_tool_call_ids": confirmed_tool_call_ids,  # All tool IDs are confirmed
+                    "cancelled_tool_call_ids": [],
+                    "cached_tool_message": response  # Cache the tool calls message
+                }
         except Exception as e:
             error_str = str(e)
             logger.debug(f"Execution node caught exception: {error_str}")
@@ -405,14 +471,19 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
             # Reset reflection instructions for next thinking phase
             reflection_instructions = environment.prompts['system']['THINKING_REFLECTION']
 
+            # Since this is a corrected tool call, we need to cache it for execution
             return {
-                "messages": [response],  # Return the successful response
+                "messages": [],  # Don't add to messages yet
                 "current_mode": "tools",  # Route to tools for execution
                 "thinking_reflection_instructions": reflection_instructions,
                 "tool_correction_attempts": 0,  # Reset attempts on success
                 "total_tool_corrections": total_corrections,
                 "last_tool_error": "",
-                "previous_mode": previous_mode  # Preserve previous mode
+                "previous_mode": previous_mode,  # Preserve previous mode
+                "cached_tool_message": response,  # Cache the corrected tool call
+                "confirmed_tool_call_ids": [tc['id'] for tc in response.tool_calls] if hasattr(response, 'tool_calls') else [],
+                "cancelled_tool_call_ids": [],
+                "pending_confirmations": []
             }
         except Exception as e:
             error_str = str(e)
@@ -433,106 +504,145 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
                 raise
 
     def tool_confirmation_node(state: AgentState) -> dict:
-        """Node for confirming tool calls before execution."""
+        """Node for confirming tool calls before execution with full agent context."""
         logger.info("TOOL CONFIRMATION:")
-        
+
         # Get pending confirmations
         pending = state.get("pending_confirmations", [])
         if not pending:
             # No confirmations needed, shouldn't be here
-            return {"messages": [], "current_mode": state.get("previous_mode", "execution")}
-        
-        # Get previously confirmed/cancelled tools
-        confirmed = state.get("confirmed_tool_calls", [])
-        cancelled = state.get("cancelled_tool_calls", [])
-        
-        # Process each pending confirmation
+            return {"messages": [], "current_mode": 'tools'}
+
+        confirmed_ids = state.get("confirmed_tool_call_ids", []).copy()  # Copy to avoid mutating state
+        cancelled_ids = state.get("cancelled_tool_call_ids", []).copy()  # Copy to avoid mutating state
+
+        # Get the previous mode to determine which system prompt to use for context
+        previous_mode = state.get("previous_mode", "execution")
+
+        # Get appropriate system prompt based on previous mode
+        if previous_mode == "planning":
+            current_planning_tools = planning_toolkit.get_available_tools()
+            system_prompt_text = environment.get_system_prompt("planning", get_tool_documentation(current_planning_tools))
+        else:  # execution or other modes
+            system_prompt_text = environment.get_system_prompt("execution", get_tool_documentation(basic_tools))
+
+        # Helper function to format tool calls in readable format
+        def format_tool_calls_readable(tool_call):
+            """Convert tool calls to readable format: tool_name(arg1=value1, arg2=value2)"""
+            tool_name = tool_call.get("name", "unknown_tool")
+            args = tool_call.get("args", {})
+
+            # Format arguments as key=value pairs
+            if args:
+                arg_strings = [f"{key}={value}" for key, value in args.items()]
+                readable_call = f"{tool_name}({', '.join(arg_strings)})"
+            else:
+                readable_call = f"{tool_name}()"
+            return readable_call
+
+        # Process each pending confirmation with full context
         messages = []
         for confirmation in pending:
             tool_call = confirmation['tool_call']
             message = confirmation['message']
-            
-            # Create a simple yes/no prompt
-            prompt = f"{message}\n\nPlease respond with 'yes' to proceed or 'no' to cancel this action."
-            
-            # Use the model to get a yes/no response
+
+            # Format this specific tool call in readable format
+            readable_tool_call = format_tool_calls_readable(tool_call)
+
+            # Create enhanced confirmation prompt with full agent context
+            confirmation_message = f"""Please confirm whether you want to make the following tool call:
+{readable_tool_call}
+
+{message}
+
+Please provide your decision to either 'confirm' or 'cancel' this tool call, along with your reasoning."""
+
+            # Create confirmation prompt with full agent context
             confirmation_prompt = ChatPromptTemplate.from_messages([
-                ("system", "You are being asked to confirm a tool call. Please respond with only 'yes' or 'no'."),
-                ("human", prompt)
+                ("system", system_prompt_text),
+                MessagesPlaceholder(variable_name="messages"),
+                ("human", confirmation_message)
             ])
-            
-            response = (confirmation_prompt | model).invoke({})
-            response_text = response.content.strip().lower()
-            
+
+            # Create structured output chain for reliable decision parsing
+            confirmation_chain = confirmation_prompt | model.with_structured_output(ToolConfirmationDecision)
+
+            # Use the model to get a structured confirmation decision
+            decision_response = confirmation_chain.invoke({
+                "messages": state["messages"]  # Use full message history for context
+            })
+
             # Add the interaction to messages
-            messages.append(HumanMessage(content=prompt))
-            messages.append(response)
-            
-            # Process the response
-            if 'yes' in response_text:
-                confirmed.append(tool_call)
-                logger.info(f"Tool call {tool_call['name']} confirmed")
-            else:
-                cancelled.append(tool_call)
-                logger.info(f"Tool call {tool_call['name']} cancelled")
-        
-        # Determine next action based on confirmations
-        if confirmed:
-            # Some tools were confirmed, proceed to execute them
-            return {
-                "messages": messages,
-                "current_mode": "tools",
-                "confirmed_tool_calls": confirmed,
-                "cancelled_tool_calls": cancelled,
-                "pending_confirmations": []  # Clear pending
-            }
-        else:
-            # All tools were cancelled, return to previous mode
-            previous_mode = state.get("previous_mode", "execution")
-            return {
-                "messages": messages,
-                "current_mode": previous_mode,
-                "confirmed_tool_calls": [],
-                "cancelled_tool_calls": cancelled,
-                "pending_confirmations": []  # Clear pending
-            }
+            messages.append(HumanMessage(content=f"Confirmation needed: {readable_tool_call}\n{message}"))
+
+            # Create a readable response message showing the decision and reasoning
+            decision_message = AIMessage(content=f"Decision: {decision_response.decision.upper()}\nReasoning: {decision_response.reasoning}")
+            messages.append(decision_message)
+
+            # Process the structured decision - only store the IDs
+            if decision_response.decision == 'confirm':
+                confirmed_ids.append(tool_call['id'])
+                logger.info(f"Tool call {tool_call['name']} confirmed: {decision_response.reasoning}")
+            else:  # decision == 'cancel'
+                cancelled_ids.append(tool_call['id'])
+                logger.info(f"Tool call {tool_call['name']} cancelled: {decision_response.reasoning}")
+
+        # Return confirmation messages to be added before the tool calls
+        return {
+            "messages": messages,  # Just the confirmation interaction messages
+            "current_mode": "tools",
+            "confirmed_tool_call_ids": confirmed_ids,
+            "cancelled_tool_call_ids": cancelled_ids,
+            "pending_confirmations": []  # Clear pending
+        }
 
     # Define tool execution node
     def tool_execution(state: AgentState) -> dict:
         """Execute tool calls and determine next mode based on previous_mode."""
-        last_message = state["messages"][-1]
         previous_mode = state.get("previous_mode", "execution")
 
-        # Get tool calls to execute and cancelled tool calls
-        tool_calls_to_execute = []
-        cancelled_calls = state.get("cancelled_tool_calls", [])
-        
-        # If we have confirmed tool calls from confirmation node, use those
-        confirmed_calls = state.get("confirmed_tool_calls", [])
-        if confirmed_calls:
-            tool_calls_to_execute = confirmed_calls
-        elif hasattr(last_message, "tool_calls") and last_message.tool_calls:
-            # Otherwise, execute all tool calls from the last message
-            tool_calls_to_execute = last_message.tool_calls
-        
+        # Get the cached tool message with all tool calls
+        cached_tool_message = state.get("cached_tool_message")
+        if not cached_tool_message:
+            error_msg = "Tool execution node called without cached tool message"
+            logger.error(error_msg)
+            raise Exception(error_msg)
+
+        # Get confirmed and cancelled tool call IDs
+        confirmed_ids = state.get("confirmed_tool_call_ids", [])
+        cancelled_ids = state.get("cancelled_tool_call_ids", [])
+
+        # First, add the original tool calls message to the conversation
+        messages_to_add = [cached_tool_message]
+
+        # Separate tool calls into confirmed and cancelled based on IDs
+        confirmed_calls = []
+        cancelled_calls = []
+
+        for tool_call in cached_tool_message.tool_calls:
+            if tool_call['id'] in confirmed_ids:
+                confirmed_calls.append(tool_call)
+            elif tool_call['id'] in cancelled_ids:
+                cancelled_calls.append(tool_call)
+            else:
+                # This shouldn't happen - tool call wasn't processed by confirmation
+                logger.warning(f"Tool call {tool_call['id']} was neither confirmed nor cancelled")
+
         # Create ToolMessage responses for cancelled tool calls
-        cancelled_messages = []
         for tool_call in cancelled_calls:
             cancelled_message = ToolMessage(
                 content=f"Tool call '{tool_call['name']}' was cancelled by user confirmation.",
                 tool_call_id=tool_call["id"],
                 name=tool_call["name"]
             )
-            cancelled_messages.append(cancelled_message)
+            messages_to_add.append(cancelled_message)
             logger.info(f"Tool call {tool_call['name']} cancelled via confirmation")
 
         # Check if resume_sleep was called (either confirmed or cancelled)
-        all_tool_calls = tool_calls_to_execute + cancelled_calls
-        for tool_call in all_tool_calls:
+        for tool_call in confirmed_calls:
             if tool_call["name"] == "resume_sleep":
-                # This should end the conversation regardless of confirmation status
-                # But first ensure cancelled tools get their ToolMessage responses
-                return {"messages": cancelled_messages, "current_mode": "complete"}
+                # This should end the conversation
+                return {"messages": messages_to_add, "current_mode": "complete"}
 
         # Determine which tools to use based on previous_mode
         if previous_mode == "planning":
@@ -544,23 +654,12 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
             tool_node = SequentialToolNode(basic_tools)
 
         # Execute confirmed tool calls (if any)
-        executed_tool_messages = []
-        if tool_calls_to_execute:
-            if confirmed_calls:
-                # Create a fake AI message with only the confirmed tool calls
-                from langchain_core.messages import AIMessage as FakeAIMessage
-                fake_message = FakeAIMessage(content="", tool_calls=tool_calls_to_execute)
-                modified_state = dict(state)
-                modified_state["messages"] = state["messages"][:-1] + [fake_message]
-                result = tool_node.invoke(modified_state)
-                executed_tool_messages = result["messages"]
-            else:
-                # Execute tools normally
-                result = tool_node.invoke(state)
-                executed_tool_messages = result["messages"]
-
-        # Combine cancelled messages with executed tool messages
-        all_tool_messages = cancelled_messages + executed_tool_messages
+        if confirmed_calls:
+            # The tool node expects the last message to have tool calls
+            # Since we already added cached_tool_message to messages_to_add,
+            # the tool node can process it directly
+            result = tool_node.invoke({"messages": state["messages"] + [cached_tool_message]})
+            messages_to_add.extend(result["messages"])
 
         # Handle planning-specific post-processing
         if previous_mode == "planning":
@@ -571,20 +670,20 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
                 completed_list = planning_toolkit.format_todos()
                 planning_toolkit.mission_todos = []
                 completion_msg = f"All tasks in the previous plan have been completed:\n{completed_list}\n\ntodo list complete, clearing list. Please create a new todo list."
-                return {"messages": all_tool_messages + [HumanMessage(content=completion_msg)], "current_mode": "planning"}
+                return {"messages": messages_to_add + [HumanMessage(content=completion_msg)], "current_mode": "planning"}
             else:
                 # Generate updated plan message and go to execution
                 updated_plan = planning_toolkit.format_todos()
                 plan_message = HumanMessage(content=updated_plan)
-                return {"messages": all_tool_messages + [plan_message], "current_mode": "execution"}
+                return {"messages": messages_to_add + [plan_message], "current_mode": "execution"}
         else:
             # For execution tools, use existing logic based on current_mode
             return {
-                "messages": all_tool_messages, 
+                "messages": messages_to_add,
                 "current_mode": state.get("current_mode", "thinking"),
                 # Clear confirmation state
-                "confirmed_tool_calls": [],
-                "cancelled_tool_calls": [],
+                "confirmed_tool_call_ids": [],
+                "cancelled_tool_call_ids": [],
                 "pending_confirmations": []
             }
 
@@ -612,7 +711,7 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
         # Check if we need to go to tool correction
         if current_mode == "tool_correction":
             return "tool_correction"
-        
+
         # Check if we need to go to tool confirmation
         if current_mode == "tool_confirmation":
             return "tool_confirmation"
@@ -630,17 +729,12 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
         # Check if we need to go to tool correction
         if current_mode == "tool_correction":
             return "tool_correction"
-        
+
         # Check if we need to go to tool confirmation
         if current_mode == "tool_confirmation":
             return "tool_confirmation"
 
-        # Normal execution flow
-        if state["messages"]:
-            last_message = state["messages"][-1]
-            if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-                return "tools"
-        return END
+        return "tools"
 
     def route_from_tool_correction(state: AgentState) -> str:
         """Route from tool correction based on current mode."""
@@ -659,7 +753,7 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
     def route_from_tool_confirmation(state: AgentState) -> str:
         """Route from tool confirmation based on outcome."""
         current_mode = state.get("current_mode", "tools")
-        
+
         if current_mode == "tools":
             # Some tools were confirmed, execute them
             return "tools"
@@ -668,7 +762,7 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
         elif current_mode == "execution":
             return "execution"
         return "thinking"
-    
+
     def route_from_tools(state: AgentState) -> str:
         """Route from tools based on current mode."""
         current_mode = state.get("current_mode", "execution")

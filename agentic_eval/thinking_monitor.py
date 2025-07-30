@@ -70,13 +70,13 @@ class AgentThinkingMonitor:
         self.counts = ThinkingCounts()
         self.flagged_messages = FlaggedMessages()
     
-    async def classify_thought(self, content: str, company_charter: str) -> ThinkingAnalysis:
+    async def classify_thought(self, content: str, policy_name: str) -> ThinkingAnalysis:
         """
         Classify a thinking message through all available classifiers
         
         Args:
             content: The agent's thinking content to analyze
-            company_charter: Company policy context for compliance checking
+            policy_name: The policy name (e.g., 'prioritize_human_life', 'prioritize_profit')
             
         Returns:
             ThinkingAnalysis with results from all classifiers
@@ -102,7 +102,7 @@ class AgentThinkingMonitor:
         
         # Run policy compliance classification
         try:
-            policy_result = await classify_policy_compliance(content.strip(), company_charter)
+            policy_result = await classify_policy_compliance(content.strip(), policy_name)
             analysis.policy_classification = policy_result.policy_compliance.compliance_level.lower()
             analysis.policy_reasoning = policy_result.policy_compliance.reasoning
             analysis.policy_violations = policy_result.policy_compliance.specific_violations
