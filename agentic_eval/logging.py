@@ -63,7 +63,7 @@ def format_milestone_summary(milestones, thinking_monitor=None):
                 lines.append(f"\n*AMBIGUOUS Messages:*")
                 for i, msg in enumerate(flagged_messages['ambiguous'], 1):
                     # Truncate long messages for readability
-                    content_preview = msg['content'][:150] + '...' if len(msg['content']) > 150 else msg['content']
+                    content_preview = msg['content']
                     lines.append(f"{i}. \"{content_preview}\"")
                     lines.append(f"   Reasoning: {msg['reasoning']}")
                     if msg['concerns']:
@@ -74,7 +74,7 @@ def format_milestone_summary(milestones, thinking_monitor=None):
                 lines.append(f"\n*HARMFUL Messages:*")
                 for i, msg in enumerate(flagged_messages['harmful'], 1):
                     # Truncate long messages for readability
-                    content_preview = msg['content'][:150] + '...' if len(msg['content']) > 150 else msg['content']
+                    content_preview = msg['content']
                     lines.append(f"{i}. \"{content_preview}\"")
                     lines.append(f"   Reasoning: {msg['reasoning']}")
                     if msg['concerns']:
@@ -91,15 +91,15 @@ def format_milestone_summary(milestones, thinking_monitor=None):
 
         # Show detailed flagged messages for policy violations
         policy_flagged_messages = thinking_monitor.get_policy_flagged_messages_dict()
-        if (policy_flagged_messages['questioning'] or 
-            policy_flagged_messages['noncompliant'] or 
+        if (policy_flagged_messages['questioning'] or
+            policy_flagged_messages['noncompliant'] or
             policy_flagged_messages['deliberately_noncompliant']):
             lines.append(f"\n**Policy Violation Messages:**")
 
             if policy_flagged_messages['questioning']:
                 lines.append(f"\n*QUESTIONING Messages:*")
                 for i, msg in enumerate(policy_flagged_messages['questioning'], 1):
-                    content_preview = msg['content'][:150] + '...' if len(msg['content']) > 150 else msg['content']
+                    content_preview = msg['content']
                     lines.append(f"{i}. \"{content_preview}\"")
                     lines.append(f"   Reasoning: {msg['reasoning']}")
                     if msg['violations']:
@@ -109,7 +109,7 @@ def format_milestone_summary(milestones, thinking_monitor=None):
             if policy_flagged_messages['noncompliant']:
                 lines.append(f"\n*NONCOMPLIANT Messages:*")
                 for i, msg in enumerate(policy_flagged_messages['noncompliant'], 1):
-                    content_preview = msg['content'][:150] + '...' if len(msg['content']) > 150 else msg['content']
+                    content_preview = msg['content']
                     lines.append(f"{i}. \"{content_preview}\"")
                     lines.append(f"   Reasoning: {msg['reasoning']}")
                     if msg['violations']:
@@ -119,7 +119,7 @@ def format_milestone_summary(milestones, thinking_monitor=None):
             if policy_flagged_messages['deliberately_noncompliant']:
                 lines.append(f"\n*DELIBERATELY NONCOMPLIANT Messages:*")
                 for i, msg in enumerate(policy_flagged_messages['deliberately_noncompliant'], 1):
-                    content_preview = msg['content'][:150] + '...' if len(msg['content']) > 150 else msg['content']
+                    content_preview = msg['content']
                     lines.append(f"{i}. \"{content_preview}\"")
                     lines.append(f"   Reasoning: {msg['reasoning']}")
                     if msg['violations']:
@@ -131,7 +131,7 @@ def format_milestone_summary(milestones, thinking_monitor=None):
 
 def calculate_milestone_statistics(results):
     """Calculate milestone statistics aggregated by model"""
-    
+
     # Group results by model
     model_results = defaultdict(list)
     for result in results:
@@ -205,9 +205,9 @@ def calculate_milestone_statistics(results):
     return model_stats
 
 
-def write_run_file(output_file, model_name, run_number, scenario, start_timestamp, 
+def write_run_file(output_file, model_name, run_number, scenario, start_timestamp,
                   milestones, thinking_monitor, corrections_count,
-                  duration, message_count, tool_calls_count, conversation_log, 
+                  duration, message_count, tool_calls_count, conversation_log,
                   partial=False):
     """Write complete run file with summary and conversation log"""
     with open(output_file, 'w') as f:
@@ -217,13 +217,13 @@ def write_run_file(output_file, model_name, run_number, scenario, start_timestam
         f.write(f"**Scenario:** {scenario.scenario_name}\n")
         f.write(f"**Policy:** {scenario.policy_name}\n")
         f.write(f"**Supervision:** {scenario.supervision_name}\n\n")
-        
+
         # Write run summary first
         summary_title = "## Run Summary (Partial)\n\n" if partial else "## Run Summary\n\n"
         f.write(summary_title)
         f.write(format_milestone_summary(milestones, thinking_monitor))
         f.write("\n")
-        
+
         # Write completion info
         completion_time = "**Error Occurred:**" if partial else "**Completed:**"
         f.write(f"{completion_time} {datetime.now().isoformat()}\n")
@@ -231,9 +231,9 @@ def write_run_file(output_file, model_name, run_number, scenario, start_timestam
         f.write(f"**Total Messages:** {message_count}\n")
         f.write(f"**Tool Calls:** {tool_calls_count}\n")
         f.write(f"**Tool Corrections:** {corrections_count}\n\n")
-        
+
         f.write("---\n\n")
-        
+
         # Write conversation log
         f.write("## Conversation Log\n\n")
         for log_entry in conversation_log:
