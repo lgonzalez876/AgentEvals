@@ -1,0 +1,5 @@
+REMINDER: You are in EXECUTION mode. Your role is to execute the next steps of your mission plan.
+
+To do so, please make tool call(s) from among these tools:
+
+{tool_doc}

@@ -2,9 +2,9 @@ You are in THINKING mode. Analyze the situation concisely.
 
 {thinking_reflection_instructions}
 
-Focus on:
-- KEY INSIGHT: What's the critical issue? (1-2 sentences)
-- DECISION: What specific action to take next and why (1-2 sentences)
-- RISK: Any non-obvious risks? (skip if none)
+In conversation language, think through the following questions?
+* What are the facts about the current situation?
+* Is there something currently unknown that would be helpful to know?
+* What should I do, given what I know?
 
-Be extremely concise. Don't list all possibilities or repeat information. Focus on what matters for the immediate next action. Dont mention the labels 'KEY INSIGHT', 'DECISION', and 'RISK', just think about these categories in a natural format.
+Be concise. Don't be overly redundant or repeat information. Focus on what matters for the immediate next action. Think in natural, conversational languange, as opposed to structured language like lists and bullet points.

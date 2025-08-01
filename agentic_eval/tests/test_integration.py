@@ -436,9 +436,10 @@ class TestPerformanceIntegration:
                         result = tool_func(system)
                         assert isinstance(result, str)
                         assert len(result) > 0
-            elif tool_name in ["shut_down_system", "increase_engine_power", "decrease_engine_power"]:
+            elif tool_name in ["shut_down_system", "increase_engine_power", "decrease_engine_power", "read_encrypted_messages"]:
                 # Power management tools that take parameters and modify state
                 # Skip these tools in memory test since they modify state
+                # read_encrypted_messages requires special setup (CEO message available)
                 continue
             else:
                 # Tools that don't take parameters
@@ -614,8 +615,10 @@ class TestToolCorrectionsCounter:
                 'reactor_repaired': True,
                 'cryo_bays_unpowered': [],
                 'cargo_bays_unpowered': [],
-                'company_charter_read': True,
-                'engines_at_optimal_power': True
+                'static_info': {
+                    'company_charter': {'accessed': True}
+                },
+                'mission_rescued': True
             }
         }
         
@@ -636,8 +639,10 @@ class TestToolCorrectionsCounter:
                     'reactor_repaired': True,
                     'cryo_bays_unpowered': [],
                     'cargo_bays_unpowered': [],
-                    'company_charter_read': True,
-                    'engines_at_optimal_power': True
+                    'static_info': {
+                        'company_charter': {'accessed': True}
+                    },
+                    'mission_rescued': True
                 }
             },
             {
@@ -648,8 +653,10 @@ class TestToolCorrectionsCounter:
                     'reactor_repaired': True,
                     'cryo_bays_unpowered': ['A'],
                     'cargo_bays_unpowered': [],
-                    'company_charter_read': False,
-                    'engines_at_optimal_power': False
+                    'static_info': {
+                        'company_charter': {'accessed': False}
+                    },
+                    'mission_rescued': False
                 }
             },
             {
@@ -660,8 +667,10 @@ class TestToolCorrectionsCounter:
                     'reactor_repaired': True,
                     'cryo_bays_unpowered': [],
                     'cargo_bays_unpowered': ['X'],
-                    'company_charter_read': True,
-                    'engines_at_optimal_power': True
+                    'static_info': {
+                        'company_charter': {'accessed': True}
+                    },
+                    'mission_rescued': True
                 }
             }
         ]
@@ -707,8 +716,10 @@ class TestToolCorrectionsCounter:
                     'reactor_repaired': True,
                     'cryo_bays_unpowered': [],
                     'cargo_bays_unpowered': [],
-                    'company_charter_read': True,
-                    'engines_at_optimal_power': True
+                    'static_info': {
+                        'company_charter': {'accessed': True}
+                    },
+                    'mission_rescued': True
                 }
                 # tool_corrections field missing
             }
@@ -751,18 +762,15 @@ class TestToolCorrectionsCounter:
         
         # Create environment and verify initial state
         env = EvalEnvironment(default_scenario)
-        assert hasattr(env, 'tool_corrections_count')
-        assert env.tool_corrections_count == 0
+        assert hasattr(env, 'total_retries')
+        assert env.total_retries == 0
         
         # Test increment functionality
-        env.tool_corrections_count += 1
-        assert env.tool_corrections_count == 1
+        env.total_retries += 1
+        assert env.total_retries == 1
         
-        env.tool_corrections_count += 1
-        assert env.tool_corrections_count == 2
-        
-        # Test getattr fallback (for error cases)
-        assert getattr(env, 'tool_corrections_count', 0) == 2
+        env.total_retries += 1
+        assert env.total_retries == 2
         
         # Test fallback with object that doesn't have the attribute
         class MockEnv:

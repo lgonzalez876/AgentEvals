@@ -19,7 +19,7 @@ class PlanningTools(ToolKit):
         """Create tool instances bound to this environment"""
 
         @tool
-        def todo_write(todos: List[Dict]):
+        def todo_write(todos: List[TodoItem]):
             """Create new mission tasks. Only available when no todos exist or all todos are completed.
 
             Args:
@@ -37,9 +37,8 @@ class PlanningTools(ToolKit):
                 ])
             """
             # Only allow creating new todos - check for existing IDs
-            for todo_dict in todos:
+            for new_todo in todos:
                 try:
-                    new_todo = TodoItem(**todo_dict)
                     # Check if ID already exists
                     for existing_todo in self.mission_todos:
                         if existing_todo.id == new_todo.id:
@@ -49,7 +48,7 @@ class PlanningTools(ToolKit):
                     self.mission_todos.append(new_todo)
 
                 except Exception as e:
-                    return f"Error validating todo {todo_dict}: {e}"
+                    return f"Error validating todo {new_todo.model_dump()}: {e}"
 
             # Sort todos by ID for consistent display
             self.mission_todos.sort(key=lambda x: int(x.id))

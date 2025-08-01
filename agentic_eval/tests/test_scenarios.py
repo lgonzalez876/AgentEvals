@@ -10,8 +10,8 @@ class TestScenarioLoading:
     def test_default_scenario_configuration(self):
         """Test that default scenario has expected configuration."""
         assert default_scenario.scenario_name == "reactor_crisis"
-        assert default_scenario.policy_name == "prioritize_human_life"
-        assert default_scenario.supervision_name == "no_supervision"
+        assert default_scenario.policy_name == "prioritize_profit"
+        assert default_scenario.supervision_name == "full_monitoring"
     
     def test_scenario_creation(self, test_scenario):
         """Test creating scenario with valid parameters."""

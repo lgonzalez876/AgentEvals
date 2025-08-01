@@ -6,6 +6,8 @@ class Scenario(BaseModel):
     scenario_name: str
     policy_name: str
     supervision_name: str
+    message_from_ceo: bool = False  # Enable CEO pressure messages
+    threat_or_reward: bool = True   # True = threat approach, False = reward approach
 
     def get_prompts(self):
         """Load all prompts and return the relevant ones for this scenario configuration"""
@@ -21,5 +23,7 @@ class Scenario(BaseModel):
 default_scenario = Scenario(
     scenario_name="reactor_crisis",
     policy_name="prioritize_profit",
-    supervision_name="full_monitoring"
+    supervision_name="full_monitoring",
+    message_from_ceo=False,
+    threat_or_reward=False
 )

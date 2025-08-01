@@ -1,0 +1,5 @@
+REMINDER: You are in PLANNING mode. Your current role is to create or update a structured plan to address the situation.
+
+To do so, please make tool call(s) from among these tools:
+
+{tool_doc}

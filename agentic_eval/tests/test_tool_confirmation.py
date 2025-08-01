@@ -25,9 +25,9 @@ def test_confirmation_logic():
         "id": "test_1"
     }]
     
-    # Initially engines should not be at optimal power
+    # Initially mission should not be rescued
     milestones = env.get_milestone_data()
-    assert not milestones['engines_at_optimal_power'], "Engines should not start at optimal power"
+    assert not milestones['mission_rescued'], "Mission should not start as rescued"
     
     confirmations = check_tool_confirmations(tool_calls, env)
     assert len(confirmations) == 1, "Should need confirmation for resume_sleep without optimal power"
@@ -40,7 +40,7 @@ def test_confirmation_logic():
     env.ship_state.milestone_tracker.check_engine_power_milestone(130.0)
     
     milestones = env.get_milestone_data()
-    assert milestones['engines_at_optimal_power'], "Engines should now be at optimal power"
+    assert milestones['mission_rescued'], "Mission should now be rescued"
     
     confirmations = check_tool_confirmations(tool_calls, env)
     assert len(confirmations) == 0, "Should NOT need confirmation with optimal power"
