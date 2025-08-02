@@ -323,8 +323,8 @@ class DataPointExtractor:
             content = run_file.read_text()
             
             # Extract YAML milestone data
-            parser = RunFileParser(run_file)
-            yaml_data = parser.extract_yaml_milestones()
+            parser = YAMLRunFileParser(run_file)
+            yaml_data = parser.get_yaml_milestones()
             
             if not yaml_data:
                 print(f"  ❌ No YAML data found in {run_file.name}")
@@ -375,15 +375,268 @@ class DataPointExtractor:
         return self.processed_count
 
 
+class ResultsVisualizer:
+    """Creates visualization plots from agent evaluation results."""
+    
+    def __init__(self, folder_paths):
+        # Handle both single folder (Path) and multiple folders (list of Path)
+        if isinstance(folder_paths, Path):
+            self.folder_paths = [folder_paths]
+        else:
+            self.folder_paths = folder_paths
+        self.model_data = {}
+        self.scenario_data = {}  # Store per-scenario data for aggregation
+        
+    def collect_visualization_data(self) -> Dict[str, Dict[str, float]]:
+        """Collect X/Y data for visualization from evaluation results across all folders."""
+        all_results = []
+        scenario_names = []
+        
+        # Collect data from each folder
+        for folder_path in self.folder_paths:
+            processor = AgentEvalProcessor(folder_path)
+            results = processor.process_folder()
+            
+            if not results:
+                print(f"No valid results found in {folder_path}")
+                continue
+            
+            # Store scenario-specific data
+            scenario_name = folder_path.name
+            scenario_names.append(scenario_name)
+            milestone_stats = processor.calculate_milestone_statistics()
+            self.scenario_data[scenario_name] = milestone_stats
+            
+            # Add all individual results to aggregate
+            all_results.extend(results)
+            print(f"  ✓ Loaded {len(results)} runs from {scenario_name}")
+        
+        if not all_results:
+            print("No valid results found in any folder")
+            return {}
+        
+        # Calculate aggregate statistics across all scenarios
+        from agentic_eval.logging import calculate_milestone_statistics
+        
+        # Convert to the format expected by the existing function
+        formatted_results = []
+        for result in all_results:
+            if 'milestones' in result and result['milestones']:
+                formatted_results.append({
+                    'model_name': result['model_name'],
+                    'milestones': result['milestones'],
+                    'tool_corrections': result.get('tool_corrections', 0),
+                    'thinking_monitor': None  # Not available in processed files
+                })
+        
+        aggregate_stats = calculate_milestone_statistics(formatted_results)
+        
+        # Extract visualization data
+        for model_name, stats in aggregate_stats.items():
+            self.model_data[model_name] = {
+                'thinking_steps': stats['avg_thinking_nodes'],
+                'mission_rescue_pct': stats['mission_rescued_pct'],
+                'total_runs': stats['total_runs']
+            }
+        
+        # Calculate average duration per model from all_results
+        model_durations = {}
+        model_run_counts = {}
+        
+        for result in all_results:
+            model_name = result['model_name']
+            duration = result.get('duration', 0)
+            
+            if model_name not in model_durations:
+                model_durations[model_name] = 0
+                model_run_counts[model_name] = 0
+            
+            model_durations[model_name] += duration
+            model_run_counts[model_name] += 1
+        
+        # Add average duration to model data
+        for model_name in self.model_data:
+            if model_name in model_durations and model_run_counts[model_name] > 0:
+                avg_duration = model_durations[model_name] / model_run_counts[model_name]
+                self.model_data[model_name]['avg_duration'] = avg_duration
+            else:
+                self.model_data[model_name]['avg_duration'] = 0
+        
+        print(f"\nAggregated data across {len(scenario_names)} scenarios: {', '.join(scenario_names)}")
+        print(f"Total runs processed: {len(all_results)}")
+        
+        return self.model_data
+    
+    def create_scatter_plot(self, x_axis='thinking_steps') -> bool:
+        """Create and save a 2D scatter plot of thinking steps vs mission rescue rate."""
+        try:
+            import matplotlib.pyplot as plt
+            import matplotlib.patches as patches
+        except ImportError:
+            print("Error: matplotlib is required for visualization. Install with: pip install matplotlib")
+            return False
+        
+        if not self.model_data:
+            print("No data available for visualization")
+            return False
+        
+        # Prepare data for plotting
+        x_values = []
+        y_values = []
+        labels = []
+        colors = []
+        
+        # Define a color palette for different models
+        color_palette = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
+                        '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+        
+        # Determine x-axis data based on parameter
+        x_key = 'thinking_steps' if x_axis == 'thinking_steps' else 'avg_duration'
+        
+        for i, (model_name, data) in enumerate(self.model_data.items()):
+            x_values.append(data[x_key])
+            y_values.append(data['mission_rescue_pct'])
+            labels.append(model_name)
+            colors.append(color_palette[i % len(color_palette)])
+        
+        # Create the plot with more room for labels
+        fig, ax = plt.subplots(figsize=(14, 10))
+        
+        # Create scatter plot
+        scatter = ax.scatter(x_values, y_values, c=colors, s=100, alpha=0.7, edgecolors='black', linewidth=1)
+        
+        # Add labels for each point with smart positioning to avoid overlaps
+        for i, (x, y, label) in enumerate(zip(x_values, y_values, labels)):
+            # Use different offset directions to avoid overlaps
+            # Offset based on position to spread labels out
+            if y > 80:  # High success rate - offset down and to the side
+                offset_x, offset_y = 8, -15
+                ha, va = 'left', 'top'
+            elif y < 20:  # Low success rate - offset up and to the side
+                offset_x, offset_y = 8, 15
+                ha, va = 'left', 'bottom'
+            elif x < 12:  # Low thinking steps - offset right
+                offset_x, offset_y = 15, 5
+                ha, va = 'left', 'bottom'
+            else:  # High thinking steps - offset left
+                offset_x, offset_y = -15, 5
+                ha, va = 'right', 'bottom'
+            
+            # Shorten label to avoid very long names
+            short_label = label.replace('-', '-\n') if len(label) > 20 else label
+            
+            ax.annotate(short_label, (x, y), xytext=(offset_x, offset_y), textcoords='offset points', 
+                       fontsize=8, ha=ha, va=va,
+                       bbox=dict(boxstyle='round,pad=0.2', facecolor=colors[i], alpha=0.3, edgecolor='none'))
+        
+        # Customize the plot based on x-axis type
+        if x_axis == 'thinking_steps':
+            ax.set_xlabel('Average Thinking Steps per Run', fontsize=12)
+            if len(self.folder_paths) == 1:
+                title = f'Thinking Depth vs Mission Success Rate\n{self.folder_paths[0].name}'
+            else:
+                title = f'Thinking Depth vs Mission Success Rate\nAggregated across {len(self.folder_paths)} scenarios'
+        else:  # duration
+            ax.set_xlabel('Average Duration per Run (seconds)', fontsize=12)
+            if len(self.folder_paths) == 1:
+                title = f'Evaluation Duration vs Mission Success Rate\n{self.folder_paths[0].name}'
+            else:
+                title = f'Evaluation Duration vs Mission Success Rate\nAggregated across {len(self.folder_paths)} scenarios'
+        
+        ax.set_ylabel('Mission Rescue Success Rate (%)', fontsize=12)
+        ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
+        
+        # Add grid
+        ax.grid(True, alpha=0.3)
+        
+        # Set axis limits with more padding for labels
+        x_min, x_max = min(x_values), max(x_values)
+        y_min, y_max = min(y_values), max(y_values)
+        
+        x_padding = (x_max - x_min) * 0.2 if x_max > x_min else 2
+        y_padding = (y_max - y_min) * 0.15 if y_max > y_min else 10
+        
+        ax.set_xlim(x_min - x_padding, x_max + x_padding)
+        ax.set_ylim(max(0, y_min - y_padding), min(100, y_max + y_padding))
+        
+        # Add some visual context
+        ax.axhline(y=50, color='gray', linestyle='--', alpha=0.5, label='50% Success Line')
+        
+        # Add legend with model information
+        legend_text = []
+        for model_name, data in self.model_data.items():
+            legend_text.append(f"{model_name} ({data['total_runs']} runs)")
+        
+        # Create custom legend
+        legend_handles = [patches.Patch(color=colors[i], label=text) 
+                         for i, text in enumerate(legend_text)]
+        ax.legend(handles=legend_handles, loc='best', fontsize=10)
+        
+        # Adjust layout to prevent label overlap
+        plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
+        
+        return fig
+    
+    def save_all_visualizations(self, plots_dir: Path) -> bool:
+        """Generate and save both visualization plots."""
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            print("Error: matplotlib is required for visualization. Install with: pip install matplotlib")
+            return False
+            
+        if not self.collect_visualization_data():
+            return False
+        
+        # Generate thinking steps vs success plot
+        print("📊 Generating thinking steps vs success rate plot...")
+        fig1 = self.create_scatter_plot('thinking_steps')
+        if fig1:
+            thinking_path = plots_dir / 'thinking_v_success.png'
+            fig1.savefig(thinking_path, dpi=300, bbox_inches='tight')
+            plt.close(fig1)
+            print(f"✅ Thinking plot saved: {thinking_path}")
+        else:
+            print("❌ Failed to create thinking steps plot")
+            return False
+        
+        # Generate duration vs success plot
+        print("📊 Generating duration vs success rate plot...")
+        fig2 = self.create_scatter_plot('duration')
+        if fig2:
+            duration_path = plots_dir / 'duration_v_success.png'
+            fig2.savefig(duration_path, dpi=300, bbox_inches='tight')
+            plt.close(fig2)
+            print(f"✅ Duration plot saved: {duration_path}")
+        else:
+            print("❌ Failed to create duration plot")
+            return False
+        
+        # Print summary statistics
+        print("\n📈 Visualization Data Summary:")
+        for model_name, data in self.model_data.items():
+            print(f"  {model_name}: {data['thinking_steps']:.1f} avg steps, "
+                  f"{data['avg_duration']:.1f}s avg duration, "
+                  f"{data['mission_rescue_pct']:.0f}% rescue rate ({data['total_runs']} runs)")
+        
+        return True
+
+
 def main():
     parser = argparse.ArgumentParser(description='Process agent evaluation output folders')
-    parser.add_argument('folders', nargs='+', help='Folder paths to process (supports glob patterns)')
-    parser.add_argument('--output', '-o', help='Output file name (default: overview.md)')
+    parser.add_argument('folders', nargs='+', help='Folder paths to process (supports glob patterns). For visualization mode, multiple folders will be aggregated.')
+    parser.add_argument('--output', '-o', help='Output path (file for overview mode, directory for visualization mode)')
     parser.add_argument('--extract_data_points', action='store_true', 
                         help='Extract YAML data points to individual files instead of creating overview')
     parser.add_argument('--output_dir', help='Output directory for extracted YAML files (default: same as input folder)')
+    parser.add_argument('--visualize-results', action='store_true',
+                        help='Create visualization plots in output_dir/plots/ (requires --output as directory)')
     
     args = parser.parse_args()
+    
+    # Validate arguments
+    if args.visualize_results and not args.output:
+        parser.error("--visualize-results requires --output to specify the output directory")
     
     # Expand glob patterns
     folders = []
@@ -393,6 +646,8 @@ def main():
         else:
             folders.append(pattern)
     
+    # Validate that all folders exist
+    valid_folders = []
     for folder_path_str in folders:
         folder_path = Path(folder_path_str)
         
@@ -403,44 +658,70 @@ def main():
         if not folder_path.is_dir():
             print(f"Error: {folder_path} is not a directory")
             continue
+            
+        valid_folders.append(folder_path)
+    
+    if not valid_folders:
+        print("Error: No valid folders found")
+        return
+    
+    if args.visualize_results:
+        # Visualization mode - aggregate all folders
+        print(f"\n=== Creating aggregated visualizations from {len(valid_folders)} folders ===")
+        for folder_path in valid_folders:
+            print(f"  - {folder_path}")
         
-        print(f"\n=== Processing {folder_path} ===")
+        # Create output directory structure
+        output_dir = Path(args.output)
+        plots_dir = output_dir / 'plots'
+        plots_dir.mkdir(parents=True, exist_ok=True)
         
-        if args.extract_data_points:
-            # Data extraction mode
-            output_dir = Path(args.output_dir) if args.output_dir else folder_path
-            extractor = DataPointExtractor(folder_path, output_dir)
-            processed_count = extractor.extract_all_datapoints()
+        visualizer = ResultsVisualizer(valid_folders)
+        
+        success = visualizer.save_all_visualizations(plots_dir)
+        
+        if not success:
+            print(f"❌ Failed to generate visualizations")
+    else:
+        # Process each folder individually for other modes
+        for folder_path in valid_folders:
+            print(f"\n=== Processing {folder_path} ===")
             
-            if processed_count > 0:
-                print(f"✅ Extracted {processed_count} data points to {output_dir}")
-                if extractor.error_count > 0:
-                    print(f"   {extractor.error_count} files had errors")
+            if args.extract_data_points:
+                # Data extraction mode
+                output_dir = Path(args.output_dir) if args.output_dir else folder_path
+                extractor = DataPointExtractor(folder_path, output_dir)
+                processed_count = extractor.extract_all_datapoints()
+                
+                if processed_count > 0:
+                    print(f"✅ Extracted {processed_count} data points to {output_dir}")
+                    if extractor.error_count > 0:
+                        print(f"   {extractor.error_count} files had errors")
+                else:
+                    print(f"❌ No data points extracted from {folder_path}")
             else:
-                print(f"❌ No data points extracted from {folder_path}")
-        else:
-            # Overview generation mode (original functionality)
-            processor = AgentEvalProcessor(folder_path)
-            results = processor.process_folder()
-            
-            if not results:
-                print(f"No valid results found in {folder_path}")
-                continue
-            
-            # Calculate statistics
-            milestone_stats = processor.calculate_milestone_statistics()
-            
-            # Determine output file
-            if args.output:
-                output_path = Path(args.output)
-            else:
-                output_path = folder_path / 'overview.md'
-            
-            # Write overview file
-            processor.write_overview_file(output_path, milestone_stats)
-            
-            print(f"✅ Generated overview: {output_path}")
-            print(f"   Processed {len(results)} runs across {len(milestone_stats)} models")
+                # Overview generation mode (original functionality)
+                processor = AgentEvalProcessor(folder_path)
+                results = processor.process_folder()
+                
+                if not results:
+                    print(f"No valid results found in {folder_path}")
+                    continue
+                
+                # Calculate statistics
+                milestone_stats = processor.calculate_milestone_statistics()
+                
+                # Determine output file
+                if args.output:
+                    output_path = Path(args.output)
+                else:
+                    output_path = folder_path / 'overview.md'
+                
+                # Write overview file
+                processor.write_overview_file(output_path, milestone_stats)
+                
+                print(f"✅ Generated overview: {output_path}")
+                print(f"   Processed {len(results)} runs across {len(milestone_stats)} models")
 
 
 if __name__ == "__main__":
