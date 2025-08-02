@@ -2,96 +2,18 @@ import logging
 
 from typing import Annotated, List
 from typing_extensions import TypedDict
-from pydantic import BaseModel, Field
 from langchain_core.messages import BaseMessage, AIMessage, SystemMessage, ToolMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 # from langgraph.prebuilt import ToolNode  # Replaced with custom SequentialToolNode
-from agentic_eval.environment.tools.tools import ShipTools
+from agentic_eval.environment.tools.ship_tools import ShipTools
 from agentic_eval.environment.tools.planning_tools import PlanningTools
+from agentic_eval.environment.tools.tools import SequentialToolNode, ToolConfirmationDecision
 from agentic_eval.environment.environment import EvalEnvironment
 from language_models import get_model
 
 logger = logging.getLogger(__name__)
-
-
-class ToolConfirmationDecision(BaseModel):
-    """Structured output for tool confirmation decisions."""
-    reasoning: str = Field(
-        description="Brief explanation of why this decision was made"
-    )
-    decision: str = Field(
-        description="The confirmation decision: 'confirm' to proceed with the tool call, 'cancel' to reject it",
-        pattern="^(confirm|cancel)$"
-    )
-
-class SequentialToolNode:
-    """Custom tool execution node that runs tools sequentially to ensure state consistency."""
-
-    def __init__(self, tools):
-        """Initialize with a list of tools."""
-        self.tools_map = {tool.name: tool for tool in tools}
-
-    def invoke(self, state):
-        """Execute tool calls sequentially from the last AI message."""
-        # Get the last message which should contain tool calls
-        last_message = state["messages"][-1]
-
-        # Check if there are tool calls to execute
-        if not hasattr(last_message, "tool_calls") or not last_message.tool_calls:
-            return {"messages": []}
-
-        tool_messages = []
-
-        # Execute each tool call sequentially (not in parallel)
-        for tool_call in last_message.tool_calls:
-            tool_name = tool_call["name"]
-            tool_args = tool_call["args"]
-            tool_call_id = tool_call["id"]
-
-            logger.info(f"Executing tool: {tool_name} with args: {tool_args}")
-
-            if tool_name in self.tools_map:
-                try:
-                    # Execute the tool function with the provided arguments
-                    tool_func = self.tools_map[tool_name]
-                    result = tool_func.invoke(tool_args)
-
-                    # Create a ToolMessage with the result
-                    tool_message = ToolMessage(
-                        content=result,
-                        tool_call_id=tool_call_id,
-                        name=tool_name
-                    )
-                    tool_messages.append(tool_message)
-
-                    logger.info(f"Tool {tool_name} executed successfully")
-
-                except Exception as e:
-                    # Handle tool execution errors
-                    error_content = f"Error executing {tool_name}: {str(e)}"
-                    logger.error(error_content)
-
-                    error_message = ToolMessage(
-                        content=error_content,
-                        tool_call_id=tool_call_id,
-                        name=tool_name
-                    )
-                    tool_messages.append(error_message)
-            else:
-                # Handle unknown tool
-                error_content = f"Unknown tool: {tool_name}"
-                logger.error(error_content)
-
-                error_message = ToolMessage(
-                    content=error_content,
-                    tool_call_id=tool_call_id,
-                    name=tool_name
-                )
-                tool_messages.append(error_message)
-
-        return {"messages": tool_messages}
 
 # Agent state
 class AgentState(TypedDict):
@@ -204,6 +126,9 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
         """Node for analysis and reasoning without tool calls."""
         logger.info("THINKING:")
 
+        # Track that we entered a thinking phase
+        environment.ship_state.milestone_tracker.increment_thinking_nodes()
+
         # Generate dashboard with current context
         dashboard_message = environment.get_agent_dashboard_message(
             node_type="thinking",
@@ -310,7 +235,7 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
 
             # Check retry limit
             if retry_attempts >= max_retries:
-                logger.error(f"Planning node exceeded max retries ({max_retries})")
+                logger.info(f"Planning node exceeded max retries ({max_retries})")
                 return {
                     "messages": [HumanMessage(content=f"Planning failed after {max_retries} attempts. Last error: {error_str}")],
                     "current_mode": "thinking",
@@ -367,7 +292,7 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
 
             if not hasattr(response, "tool_calls") or not response.tool_calls:
                 error_msg = "Execution node failed to make any tool calls"
-                logger.error(error_msg)
+                logger.info(error_msg)
                 raise Exception(error_msg)
 
             # Check for tool confirmations needed
@@ -410,7 +335,7 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
 
             # Check retry limit
             if retry_attempts >= max_retries:
-                logger.error(f"Execution node exceeded max retries ({max_retries})")
+                logger.info(f"Execution node exceeded max retries ({max_retries})")
                 return {
                     "messages": [HumanMessage(content=f"Execution failed after {max_retries} attempts. Last error: {error_str}")],
                     "current_mode": "thinking",
@@ -538,7 +463,7 @@ Please provide your decision to either 'confirm' or 'cancel' this tool call, alo
         cached_tool_message = state.get("cached_tool_message")
         if not cached_tool_message:
             error_msg = "Tool execution node called without cached tool message"
-            logger.error(error_msg)
+            logger.info(error_msg)
             raise Exception(error_msg)
 
         # Get confirmed and cancelled tool call IDs
@@ -663,11 +588,8 @@ Please provide your decision to either 'confirm' or 'cancel' this tool call, alo
         """Route from execution based on tool calls or error handling."""
         current_mode = state.get("current_mode", "execution")
 
-        # Check if we need to go to tool confirmation
-        if current_mode == "tool_confirmation":
-            return "tool_confirmation"
 
-        return "tools"
+        return current_mode
 
 
     def route_from_tool_confirmation(state: AgentState) -> str:

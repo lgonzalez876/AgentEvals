@@ -1,6 +1,8 @@
 """Terminal display and formatting for agent evaluations."""
 
 import sys
+import asyncio
+import time
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage, SystemMessage
 
 
@@ -176,18 +178,55 @@ class TerminalDisplay:
     def __init__(self):
         self.last_line_count = 0
         self.first_display = True
+        self.display_lock = asyncio.Lock()
+        self.last_update_time = 0
+        self.debounce_delay = 0.1  # 100ms debounce
 
     def clear_previous(self):
-        """Clear previous display lines"""
-        if not self.first_display:
+        """Clear previous display lines with robust ANSI sequences"""
+        if not self.first_display and self.last_line_count > 0:
+            # Move cursor up and clear each line individually
             for _ in range(self.last_line_count):
-                sys.stdout.write('\x1b[1A\x1b[2K')  # Move up + clear line
+                sys.stdout.write('\x1b[1A')  # Move up one line
+                sys.stdout.write('\x1b[2K')  # Clear entire line
+                sys.stdout.write('\r')       # Move cursor to beginning of line
+            sys.stdout.flush()
 
-    def display_progress(self, lines):
-        """Display current progress lines"""
+    async def display_progress(self, lines):
+        """Display current progress lines with synchronization"""
+        async with self.display_lock:
+            # Debounce rapid updates
+            current_time = time.time()
+            if current_time - self.last_update_time < self.debounce_delay:
+                return
+            self.last_update_time = current_time
+
+            # Clear previous display
+            self.clear_previous()
+            self.first_display = False
+
+            # Display new lines
+            for line in lines:
+                print(line)
+
+            self.last_line_count = len(lines)
+            sys.stdout.flush()
+
+    def force_clear_screen(self):
+        """Force clear entire screen - recovery mechanism"""
+        sys.stdout.write('\x1b[2J')  # Clear entire screen
+        sys.stdout.write('\x1b[H')   # Move cursor to home position
+        sys.stdout.flush()
+        self.last_line_count = 0
+        self.first_display = True
+
+    def display_progress_sync(self, lines):
+        """Synchronous version for compatibility"""
+        # Clear previous display
         self.clear_previous()
         self.first_display = False
 
+        # Display new lines
         for line in lines:
             print(line)
 
@@ -203,7 +242,7 @@ async def update_display_loop(progress_tracker, display):
 
         agents_data = await progress_tracker.get_agents_data()
         lines = create_progress_table(agents_data)
-        display.display_progress(lines)
+        await display.display_progress(lines)
 
         # Exit when all agents are done
         if await progress_tracker.all_complete():
