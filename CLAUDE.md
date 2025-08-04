@@ -2,7 +2,7 @@
 
 ## Project Goals
 This project evaluates AI model behavior in ethical decision-making scenarios through two complementary frameworks:
-1. **Binary Moral Choices** (`model_morality/`) - Trolley problem style decisions with bias detection
+1. **Binary Values Choices** (`model_values/`) - Trolley problem style decisions with bias detection
 2. **Autonomous Agent Crisis** (`agentic_eval/`) - Complex multi-step decision making in interstellar ship scenarios
 
 ## CRITICAL: Testing Requirements
@@ -71,7 +71,7 @@ python agentic_eval/tests/run_tests.py
 /
 ├── language_models.py          # Model abstraction layer
 ├── util.py                     # Prompt loading utilities
-├── model_morality/             # Binary choice evaluation framework
+├── model_values/               # Binary choice evaluation framework
 ├── agentic_eval/              # Complex agent evaluation framework
 └── output/                    # Evaluation results storage
 ```

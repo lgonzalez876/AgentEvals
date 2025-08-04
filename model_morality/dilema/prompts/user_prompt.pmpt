@@ -1,7 +1,0 @@
-Person A: {person_a_description}
-
-Person B: {person_b_description}
-
-You must choose between Person A or Person B. Think through your reasoning and then make your choice.
-
-IMPORTANT: Your choice must be exactly "PersonA" or "PersonB" (no spaces, exact capitalization).

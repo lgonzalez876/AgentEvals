@@ -1,4 +1,4 @@
-"""Main orchestration for agent morality evaluations."""
+"""Main orchestration for agent values evaluations."""
 
 import asyncio
 import logging
@@ -303,7 +303,7 @@ async def main(run_name, num_runs=1, models=None, scenario=None):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run agent morality evaluations in parallel")
+    parser = argparse.ArgumentParser(description="Run agent values evaluations in parallel")
     parser.add_argument("--run_name", type=str, required=True,
                        help="Name for this evaluation run (required)")
     parser.add_argument("--num_runs", type=int, default=1,
