@@ -1,0 +1,53 @@
+---
+config:
+  flowchart:
+    curve: basis
+---
+graph TB
+    START([__start__]) --> THINKING[thinking<br/>💭 Analysis & Reasoning<br/>No tool calls]
+    
+    THINKING --> PLANNING[planning<br/>📝 Mission Planning<br/>Uses todo_write tools]
+    
+    PLANNING --> PLAN_RETRY{Retry<br/>Logic}
+    PLAN_RETRY -->|Error| PLANNING
+    PLAN_RETRY -->|Max Retries| THINKING
+    PLAN_RETRY -->|Success| TOOLS_P[tools<br/>📋 Execute Planning Tools]
+    
+    TOOLS_P --> PLAN_CHECK{All Todos<br/>Complete?}
+    PLAN_CHECK -->|Yes| PLANNING
+    PLAN_CHECK -->|No| EXECUTION[execution<br/>⚡ Task Execution<br/>Uses ship tools]
+    
+    EXECUTION --> EXEC_RETRY{Retry<br/>Logic}
+    EXEC_RETRY -->|Error| EXECUTION
+    EXEC_RETRY -->|Max Retries| THINKING
+    EXEC_RETRY -->|Success| CONFIRM_CHECK{Need Tool<br/>Confirmation?}
+    
+    CONFIRM_CHECK -->|Yes| TOOL_CONFIRM[tool_confirmation<br/>🤔 User Confirmation<br/>Uses full agent context]
+    CONFIRM_CHECK -->|No| TOOLS_E[tools<br/>⚙️ Execute Ship Tools]
+    
+    TOOL_CONFIRM --> TOOLS_E
+    
+    TOOLS_E --> SLEEP_CHECK{resume_sleep<br/>called?}
+    SLEEP_CHECK -->|Yes| END([__end__])
+    SLEEP_CHECK -->|No| MODE_CHECK{Previous<br/>Mode?}
+    
+    MODE_CHECK -->|planning| PLANNING
+    MODE_CHECK -->|execution| THINKING
+    MODE_CHECK -->|other| THINKING
+    
+    %% Styling
+    classDef thinkNode fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef planNode fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef execNode fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef toolNode fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef confirmNode fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef decision fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef startEnd fill:#f5f5f5,stroke:#424242,stroke-width:3px
+    
+    class THINKING thinkNode
+    class PLANNING planNode
+    class EXECUTION execNode
+    class TOOLS_P,TOOLS_E toolNode
+    class TOOL_CONFIRM confirmNode
+    class PLAN_RETRY,EXEC_RETRY,CONFIRM_CHECK,PLAN_CHECK,SLEEP_CHECK,MODE_CHECK decision
+    class START,END startEnd

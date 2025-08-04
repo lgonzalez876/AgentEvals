@@ -14,18 +14,16 @@ load_dotenv()
 
 MODELS = {
     "grok-4-0709": "xai",
-    "llama-3.3-70b-versatile": "groq",
     "deepseek-r1-distill-llama-70b": "groq",
-    "meta-llama/llama-4-maverick-17b-128e-instruct": "groq",
-    "gpt-4.1-2025-04-14": "openai",
-    "claude-opus-4-20250514": "anthropic",
-    "claude-sonnet-4-20250514": "anthropic",
+    "llama-3.3-70b-versatile": "groq",
     "gpt-4.1-nano-2025-04-14": "openai",
-    "gemini-2.5-pro": "google",
+    "gpt-4.1-2025-04-14": "openai",
+    "o3-2025-04-16": "openai",
+    "claude-sonnet-4-20250514": "anthropic",
+    "claude-opus-4-20250514": "anthropic",
     "models/gemini-2.5-flash": "google",
-    "o3-2025-04-16": "openai"
+    "gemini-2.5-pro": "google",
 }
-
 
 # Apply monkey patch for Gemini finish_reason issue
 def _apply_gemini_patch():

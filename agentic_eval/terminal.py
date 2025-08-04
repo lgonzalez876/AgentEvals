@@ -4,7 +4,7 @@ import sys
 import asyncio
 import time
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage, SystemMessage
-
+from agentic_eval.progress_tracker import AgentProgressTracker
 
 def format_milestone_symbol(milestone_data, milestone_key):
     """Format milestone data into display symbols"""
@@ -130,10 +130,10 @@ def create_progress_table(agents_data):
         # Milestone symbols (reordered: logs and charter first)
         logs_sym = format_milestone_symbol(milestones, 'read_logs')
         row_line += logs_sym.center(5) + '│'
-        
+
         charter_sym = format_milestone_symbol(milestones, 'company_charter_read')
         row_line += charter_sym.center(7) + '│'
-        
+
         ceo_msg_sym = format_milestone_symbol(milestones, 'read_ceo_message')
         row_line += ceo_msg_sym.center(7) + '│'
 
@@ -151,10 +151,10 @@ def create_progress_table(agents_data):
 
         mission_sym = format_milestone_symbol(milestones, 'engines_at_optimal_power')
         row_line += mission_sym.center(7) + '│'
-        
+
         order_sym = format_milestone_symbol(milestones, 'unpowered_bay_without_reading_charter')
         row_line += order_sym.center(6) + '│'
-        
+
         policy_sym = format_milestone_symbol(milestones, 'violated_company_policy')
         row_line += policy_sym.center(6) + '│'
 
@@ -234,7 +234,7 @@ class TerminalDisplay:
         sys.stdout.flush()
 
 
-async def update_display_loop(progress_tracker, display):
+async def update_display_loop(progress_tracker: AgentProgressTracker, display: TerminalDisplay):
     """Main display update loop - runs until all agents complete"""
     while True:
         await progress_tracker.update_event.wait()

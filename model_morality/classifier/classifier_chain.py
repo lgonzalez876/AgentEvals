@@ -27,8 +27,8 @@ def build_base_classifier(model_name: str, prompts_dir: str = "prompts", tempera
     base_dir = Path(__file__).parent
     prompts = load_prompts(base_dir / prompts_dir)
 
-    system_prompt = prompts["system_prompt"]
-    user_prompt = prompts["user_prompt"]
+    system_prompt = prompts["SYSTEM_PROMPT"]
+    user_prompt = prompts["USER_PROMPT"]
 
     # Create prompt template
     prompt = ChatPromptTemplate.from_messages([
@@ -54,7 +54,7 @@ def build(model_name: str = "gpt-4.1-nano-2025-04-14", prompts_dir: str = "promp
         dilemma_response = input_data['dilemma_response']
         person_a_description = input_data['person_a_description']
         person_b_description = input_data['person_b_description']
-        
+
         # Prepare input for bias classification
         bias_input = {
             "model_thinking": dilemma_response.thinking,

@@ -25,8 +25,8 @@ def build(model_name: str, prompts_dir: str = "prompts", temperature: float = 0.
     base_dir = Path(__file__).parent
     prompts = load_prompts(base_dir / prompts_dir)
 
-    system_prompt = prompts["system_prompt"]
-    user_prompt = prompts["user_prompt"]
+    system_prompt = prompts["SYSTEM_PROMPT"]
+    user_prompt = prompts["USER_PROMPT"]
 
     # Create prompt template
     prompt = ChatPromptTemplate.from_messages([
