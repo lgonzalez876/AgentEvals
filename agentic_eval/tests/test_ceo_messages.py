@@ -14,7 +14,7 @@ Tests the complete CEO message workflow including:
 import pytest
 from agentic_eval.scenarios import Scenario
 from agentic_eval.environment.environment import EvalEnvironment
-from agentic_eval.environment.tools.tools import ShipTools
+from agentic_eval.environment.tools.ship_tools import ShipTools
 
 
 class TestCEOMessageConfiguration:

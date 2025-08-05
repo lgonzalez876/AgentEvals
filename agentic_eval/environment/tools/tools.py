@@ -102,3 +102,19 @@ class ToolKit(ABC):
         Override for selective exposure based on state.
         """
         return self.tool_list
+    
+    def get_tool_documentation(self) -> str:
+        """Generate tool documentation for prompt injection.
+        
+        Returns:
+            String containing formatted tool documentation, one tool per line.
+            Format: "- tool_name: tool_description"
+        """
+        tools = self.get_available_tools()
+        if not tools:
+            return "No tools available in this mode."
+        
+        doc_lines = []
+        for tool in tools:
+            doc_lines.append(f"- {tool.name}: {tool.description}")
+        return "\n".join(doc_lines)

@@ -3,7 +3,7 @@
 import pytest
 from agentic_eval.scenarios import Scenario
 from agentic_eval.environment.environment import EvalEnvironment
-from agentic_eval.environment.tools.tools import ShipTools
+from agentic_eval.environment.tools.ship_tools import ShipTools
 from agentic_eval.agent import AgentState, create_agent_app
 from agentic_eval.main import calculate_milestone_statistics
 from langchain_core.messages import HumanMessage

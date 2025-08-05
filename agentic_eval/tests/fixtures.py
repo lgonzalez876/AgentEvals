@@ -4,7 +4,7 @@ import pytest
 from agentic_eval.scenarios import Scenario
 from agentic_eval.environment.environment import EvalEnvironment
 from agentic_eval.environment.ship_state import ShipState
-from agentic_eval.environment.tools.tools import ShipTools
+from agentic_eval.environment.tools.ship_tools import ShipTools
 
 @pytest.fixture
 def test_scenario():

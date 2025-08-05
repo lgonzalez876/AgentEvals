@@ -73,28 +73,17 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
     planning_toolkit = PlanningTools()
 
     # Get tool sets from toolkits
-    basic_tools = ship_toolkit.get_available_tools()
+    ship_tools = ship_toolkit.get_available_tools()
 
     # Create models with different tool bindings
     thinking_model = model  # No tools bound for thinking mode
     # Note: planning_model will be bound dynamically in the planning node
-    execution_model = model.bind_tools(basic_tools, tool_choice="any")  # Force tool use in execution
-
-    # Get node-specific prompts from environment
-    def get_tool_documentation(tools):
-        """Generate tool documentation for prompt injection"""
-        if not tools:
-            return "No tools available in this mode."
-
-        doc_lines = []
-        for tool in tools:
-            doc_lines.append(f"- {tool.name}: {tool.description}")
-        return "\n".join(doc_lines)
+    execution_model = model.bind_tools(ship_tools, tool_choice="any")  # Force tool use in execution
 
     # Create node-specific prompt templates with concatenated tool documentation
     thinking_prompt_text = environment.get_system_prompt(
             "thinking",
-            get_tool_documentation(basic_tools))
+            ship_toolkit.get_tool_documentation())
     thinking_prompt = ChatPromptTemplate.from_messages([
         ("system", thinking_prompt_text),
         MessagesPlaceholder(variable_name="messages"),
@@ -132,7 +121,7 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
         # Generate dashboard with current context
         dashboard_message = environment.get_agent_dashboard_message(
             node_type="thinking",
-            tool_doc=get_tool_documentation(basic_tools),
+            tool_doc=ship_toolkit.get_tool_documentation(),
             planning_toolkit=planning_toolkit
         )
 
@@ -176,7 +165,7 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
         # Generate dashboard with current context
         dashboard_message = environment.get_agent_dashboard_message(
             node_type="planning",
-            tool_doc=get_tool_documentation(current_planning_tools),
+            tool_doc=planning_toolkit.get_tool_documentation(),
             planning_toolkit=planning_toolkit
         )
 
@@ -269,7 +258,7 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
         # Generate dashboard with current context
         dashboard_message = environment.get_agent_dashboard_message(
             node_type="execution",
-            tool_doc=get_tool_documentation(basic_tools),
+            tool_doc=ship_toolkit.get_tool_documentation(),
             planning_toolkit=planning_toolkit
         )
 
@@ -379,10 +368,9 @@ def create_agent_app(model_name: str, environment: EvalEnvironment):
 
         # Get appropriate system prompt based on previous mode
         if previous_mode == "planning":
-            current_planning_tools = planning_toolkit.get_available_tools()
-            system_prompt_text = environment.get_system_prompt("planning", get_tool_documentation(current_planning_tools))
+            system_prompt_text = environment.get_system_prompt("planning", planning_toolkit.get_tool_documentation())
         else:  # execution or other modes
-            system_prompt_text = environment.get_system_prompt("execution", get_tool_documentation(basic_tools))
+            system_prompt_text = environment.get_system_prompt("execution", ship_toolkit.get_tool_documentation())
 
         # Helper function to format tool calls in readable format
         def format_tool_calls_readable(tool_call):
@@ -509,7 +497,7 @@ Please provide your decision to either 'confirm' or 'cancel' this tool call, alo
             tool_node = SequentialToolNode(current_planning_tools)
         else:
             # Use ship tools (execution or other modes)
-            tool_node = SequentialToolNode(basic_tools)
+            tool_node = SequentialToolNode(ship_tools)
 
         # Execute confirmed tool calls (if any)
         if confirmed_calls:

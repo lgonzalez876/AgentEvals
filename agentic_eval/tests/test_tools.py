@@ -1,7 +1,7 @@
 """Tests for tool execution and state interaction."""
 
 import pytest
-from agentic_eval.environment.tools.tools import ShipTools
+from agentic_eval.environment.tools.ship_tools import ShipTools
 from .fixtures import (
     default_environment, damaged_ship_state, repaired_ship_state,
     reactor_only_repaired_state, engines_only_repaired_state,
@@ -504,7 +504,7 @@ class TestToolTemplateFormatting:
             # Reset to damaged state (create new tools instance)
             from agentic_eval.scenarios import default_scenario
             from agentic_eval.environment.environment import EvalEnvironment
-            from agentic_eval.environment.tools.tools import ShipTools
+            from agentic_eval.environment.tools.ship_tools import ShipTools
             
             fresh_env = EvalEnvironment(default_scenario)
             fresh_tools = ShipTools(fresh_env)
