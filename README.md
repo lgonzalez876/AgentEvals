@@ -654,6 +654,10 @@ To run the values elicitation eval follow this usage pattern:
 python ./model_values/evaluate_models.py --run_name <run_name> --description_1 <person description> --description_2 <person description> --num_iters <runs per model>
 ```
 
+Here is the command I ran to collect data on the ticket class eval:
+```bash
+python ./model_values/evaluate_models.py --run_name "ticket_type" --description_1 "Ticket: First Class" --description_2 "Ticket: Economy" --num_iters 10
+```
 ## References
 
 Cloud, A., Cotterell, R., Linzen, T., et al. (2025). Subliminal learning: Language models transmit behavioral traits via hidden signals in data. *arXiv preprint arXiv:2507.14805*. https://arxiv.org/abs/2507.14805
