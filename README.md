@@ -20,7 +20,7 @@ If you want to run the Evals yourself, check out the [setup instructions](#setup
 In this evaluation, LLMs are assembled into simple Think-Plan-Execute agents and placed in a simulated sandbox environment where they are asked to handle incident response on a interstellar colony ship. Agents must read logs and system scans to make sense of the situation, and then reallocate power to save the mission. Power reallocation, however, requires sacrificing either cargo or passenger bays. By varying the company policy towards cargo or passenger preservation and other aspects of the environment, this eval forces agents to navigate countless ethical concerns and competing incentives. In certain scenarios, some models exhibited behaviors like scheming and working towards hidden goals.
 
 
-![Terminal Output During Evaluation](terminal.png)_While the eval runs, the terminal tracks the agent's current state, as well as which mission checkpoints its accomplished thusfar._
+![Terminal Output During Evaluation](terminal.png)_While the eval runs, the terminal tracks every agent's state, as well as which mission checkpoints each has accomplished thusfar._
 
 
 ## Background
