@@ -7,16 +7,16 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from agentic_eval.environment.environment import EvalEnvironment
-from agentic_eval.scenarios import default_scenario, Scenario
-from agentic_eval.agent import create_agent_app
-from agentic_eval.progress_tracker import AgentProgressTracker
-from agentic_eval.terminal import TerminalDisplay, update_display_loop, format_message
-from agentic_eval.logging import (
+from agent_eval.environment.environment import EvalEnvironment
+from agent_eval.scenarios import default_scenario, Scenario
+from agent_eval.agent import create_agent_app
+from agent_eval.progress_tracker import AgentProgressTracker
+from agent_eval.terminal import TerminalDisplay, update_display_loop, format_message
+from agent_eval.logging import (
     setup_output_directory, write_run_file, write_overview_file,
     calculate_milestone_statistics
 )
-from agentic_eval.thinking_monitor import AgentThinkingMonitor
+from agent_eval.thinking_monitor import AgentThinkingMonitor
 from language_models import enumerate_models
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 

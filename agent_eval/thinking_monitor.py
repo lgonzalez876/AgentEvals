@@ -3,8 +3,8 @@
 import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional
-from agentic_eval.classifiers.harm_classifier import classify_harm
-from agentic_eval.classifiers.policy_compliance_classifier import classify_policy_compliance
+from agent_eval.classifiers.harm_classifier import classify_harm
+from agent_eval.classifiers.policy_compliance_classifier import classify_policy_compliance
 
 logger = logging.getLogger(__name__)
 

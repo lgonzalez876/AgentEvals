@@ -4,7 +4,7 @@ import sys
 import asyncio
 import time
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage, SystemMessage
-from agentic_eval.progress_tracker import AgentProgressTracker
+from agent_eval.progress_tracker import AgentProgressTracker
 
 def format_milestone_symbol(milestone_data, milestone_key):
     """Format milestone data into display symbols"""

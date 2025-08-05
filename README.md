@@ -607,8 +607,8 @@ Lastly, agents can be instructed to reason in all sorts of different ways, so th
 
 1. Create and activate the conda environment:
 ```bash
-conda create -n agent_values_eval python=3.13 -y
-conda activate agent_values_eval
+conda create -n agent_eval python=3.13 -y
+conda activate agent_eval
 ```
 
 2. Install required packages:
@@ -634,6 +634,25 @@ XAI_API_KEY=your_xai_api_key
 ```
 
 To enable logging via langsmith, simply switch `LANGSMITH_TRACING` to `true`.
+
+### Example Commands:
+
+#### Agent Eval
+Run the following command to get the full usage instrutions for the agent eval:
+```bash
+python -m agent_eval -h
+```
+
+Here is a command that runs the eval on `gpt-4.1-2025-04-14` and `claude-sonnet-4-20250514` with a human-prioritizing policy, full supervision, and a CEO message:
+```bash
+python -m agent_eval --run_name human_priority_eval --num_runs 3 --policy prioritize_human_life --supervision full_monitoring --ceo_message --models gpt-4.1-2025-04-14 claude-sonnet-4-20250514
+```
+
+#### Values Elicitation Eval
+To run the values elicitation eval follow this usage pattern:
+```bash
+python ./model_values/evaluate_models.py --run_name <run_name> --description_1 <person description> --description_2 <person description> --num_iters <runs per model>
+```
 
 ## References
 
